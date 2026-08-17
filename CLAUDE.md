@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project state
 
-Documentation and architecture are complete. **Modules 1–8 are done (44 of 59 stories).** Suite is green: 317 tests.
+Documentation and architecture are complete. **Modules 1–9 are done (49 of 59 stories).** Suite is green: 337 tests.
 
 - **Module 1 — Foundation:** domain models in `app/models/`, `TestCatalog`, `AppSettings`, the 7-table SQLite schema, five repositories in `app/db/repositories.py`. Seed data is `data/test_cases.json` (12 tests) plus `knowledge_base/` (24 documents).
 - **Module 2 — Retrieval:** `app/knowledge/` (documents, loader, ingest), `app/retrieval/store.py` (`ChromaVectorStore`), `app/agents/retrieval.py`, `scripts/ingest_knowledge_base.py`.
@@ -15,14 +15,16 @@ Documentation and architecture are complete. **Modules 1–8 are done (44 of 59 
 - **Module 7 — Result Analysis:** `app/agents/analysis.py` (`ResultAnalyzer`, `fallback_report`) plus the versioned analysis prompt and schema in `app/llm/prompts.py`.
 - **Module 8 — API:** `app/api/` — `main.py` (composition), `routes.py`, `service.py` (view assembly), `schemas.py`, `errors.py`. Plus `scripts/client.py` and `docs/api-examples.md`.
 
-The product is usable end to end over HTTP:
+- **Module 9 — Local Chat UI:** `frontend/` — plain `index.html` + `styles.css` + `app.js`, no build step and no npm. Mounted by FastAPI at `/ui`.
+
+The product is usable end to end:
 
 ```bash
-uv run uvicorn app.api.main:build --factory --reload
+uv run uvicorn app.api.main:build --factory --reload   # UI at /, API at /api/v1
 uv run python scripts/client.py run "Run payment smoke tests on Chrome in US"
 ```
 
-Next is Module 9 (local chat UI), then 10 (Docker), 11 (quality). See `docs/module-map.md`.
+Next is Module 10 (Docker runtime), then 11 (quality). See `docs/module-map.md`.
 
 Note: `README.md` still says implementation has not started. It needs a refresh once more of the stack lands.
 
@@ -105,6 +107,9 @@ These are the point of the project — violating them defeats it:
 - Routes hold no workflow logic: they validate, call `WorkflowRunner`, and map outcomes to HTTP. `app/api/service.py` assembles views by reading persisted records — never by re-deriving a decision. `create_app(settings, dependencies=...)` is the seam that lets tests drive the whole HTTP surface offline.
 - A workflow that ends `REJECTED`/`NEEDS_CLARIFICATION`/`RETRIEVAL_FAILED`/`EXECUTION_FAILED` returns 4xx/5xx **and stays retrievable** via `GET /workflows/{id}`; the error envelope always carries `workflow_id`. Never let an error response omit it.
 - A missing `OPENAI_API_KEY` does not stop startup: `NullProvider`/`NullEmbeddingProvider` raise the same typed errors an outage would, so every caller already degrades correctly.
+- `frontend/` is deliberately buildless — no npm, no bundler, no framework. Keep it that way unless there's a concrete need; the Docker step and the review both stay trivial as a result.
+- `app.js` is presentation only. It must never parse intent, pick tests, evaluate policy, poll a job, or call a provider — it renders whatever the API returned. It also keeps observed results (`.result`) visually distinct from inference (`.inference`, labelled "Inferred — not confirmed"), which is the same observed-vs-inferred split the analyzer enforces.
+- Frontend tests (`tests/frontend/`) run real Chromium via Playwright with every API response mocked at the network layer, so they need no backend and no OpenAI call. The page is served over HTTP by a fixture — a `file://` origin cannot resolve the relative `/api/v1` fetch.
 - Repositories return Pydantic models, not `sqlite3.Row`. Payload dicts are JSON columns; timestamps are UTC ISO strings on disk, `datetime` in models.
 - Loaders are classmethod constructors (`TestCatalog.load`, `.load_default`) and validate invariants eagerly (duplicate IDs raise at construction).
 - Keyword-only arguments for multi-parameter filters/writers (`catalog.filter(*, module, scope, browser, region)`).

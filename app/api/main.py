@@ -5,11 +5,14 @@ receives them, which is what keeps routes thin and tests able to swap any
 boundary.
 """
 
+from pathlib import Path
 from typing import Optional
 
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.agents.analysis import ResultAnalyzer
 from app.agents.execution import ExecutionAgent
@@ -49,6 +52,7 @@ DESCRIPTION = (
     "executed, and evidence-grounded workflow."
 )
 VERSION = "0.1.0"
+FRONTEND_DIR = Path(__file__).resolve().parents[2] / "frontend"
 
 
 def create_app(
@@ -88,7 +92,26 @@ def create_app(
     application.add_exception_handler(RequestValidationError, validation_error_handler)
     application.add_exception_handler(Exception, unhandled_error_handler)
     application.include_router(router)
+    _mount_frontend(application)
     return application
+
+
+def _mount_frontend(application: FastAPI) -> None:
+    """Serve the local chat client alongside the API when it is present.
+
+    Convenience for a single-command local run. The page is still a plain HTTP
+    client of /api/v1, so it works equally well served from anywhere else.
+    """
+    if not FRONTEND_DIR.is_dir():
+        return
+
+    application.mount(
+        "/ui", StaticFiles(directory=str(FRONTEND_DIR), html=True), name="ui"
+    )
+
+    @application.get("/", include_in_schema=False)
+    def _root() -> RedirectResponse:
+        return RedirectResponse(url="/ui/")
 
 
 def _build_inspector(dependencies: WorkflowDependencies) -> WorkflowInspector:
