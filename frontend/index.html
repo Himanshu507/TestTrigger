@@ -8,8 +8,23 @@
   </head>
   <body>
     <header class="masthead">
-      <h1>Test Trigger</h1>
-      <p class="subtitle">Local test assistant. Describe the tests you want to run.</p>
+      <div class="masthead-inner">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M13 2 4 14h6l-1 8 9-12h-6z" stroke-linejoin="round" />
+            </svg>
+          </span>
+          <div>
+            <h1>Test Trigger</h1>
+            <p class="subtitle">Describe the tests you want. It plans, runs, and explains them.</p>
+          </div>
+        </div>
+        <div class="connection" id="connection" role="status">
+          <span class="dot" aria-hidden="true"></span>
+          <span id="connection-text">Checking backend…</span>
+        </div>
+      </div>
     </header>
 
     <main class="layout">
@@ -20,14 +35,34 @@
         aria-label="Conversation"
       >
         <article class="message assistant">
-          <div class="bubble">
+          <div class="bubble welcome">
+            <h2 class="welcome-title">What should I run?</h2>
             <p>
-              Ask for a test run in plain language, for example
-              <em>“Run smoke tests for the payment module on Chrome in the US region.”</em>
+              Ask in plain language. I only run tests that exist in the catalog, and
+              I show you why each one was chosen.
             </p>
-            <p class="hint">
-              Turn on <strong>Dry run</strong> to see the plan without starting a job.
-            </p>
+            <p class="hint">Try one of these:</p>
+            <div class="suggestions" id="suggestions">
+              <button type="button" class="chip" data-query="Run smoke tests for the payment module on Chrome in the US region">
+                <span class="chip-icon" aria-hidden="true">▸</span>
+                Payment smoke tests on Chrome in the US
+              </button>
+              <button type="button" class="chip" data-query="Run wallet regression tests on Safari in the UK" data-dry-run="true">
+                <span class="chip-icon" aria-hidden="true">▸</span>
+                Wallet regression on Safari in the UK
+                <span class="chip-tag">dry run</span>
+              </button>
+              <button type="button" class="chip" data-query="Run withdrawal smoke tests on Safari in US-Nevada">
+                <span class="chip-icon" aria-hidden="true">▸</span>
+                Withdrawal on Safari in Nevada
+                <span class="chip-tag warn">blocked by policy</span>
+              </button>
+              <button type="button" class="chip" data-query="Run some tests">
+                <span class="chip-icon" aria-hidden="true">▸</span>
+                Run some tests
+                <span class="chip-tag warn">needs detail</span>
+              </button>
+            </div>
           </div>
         </article>
       </section>
@@ -44,14 +79,21 @@
         ></textarea>
 
         <div class="composer-actions">
-          <div class="toggle">
+          <label class="toggle" for="dry-run">
             <input type="checkbox" id="dry-run" name="dry-run" />
-            <label for="dry-run">Dry run</label>
-          </div>
-          <p id="composer-help" class="hint">
-            Press Enter to send, Shift+Enter for a new line.
-          </p>
-          <button id="send" type="submit">Send</button>
+            <span class="toggle-track" aria-hidden="true"><span class="toggle-thumb"></span></span>
+            <span class="toggle-label">Dry run</span>
+            <span class="toggle-note">plan only, no job</span>
+          </label>
+
+          <p id="composer-help" class="hint">Enter to send · Shift+Enter for a new line</p>
+
+          <button id="send" type="submit">
+            <span class="send-label">Send</span>
+            <svg class="send-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="m5 12 14-7-7 14-2-5z" stroke-linejoin="round" />
+            </svg>
+          </button>
         </div>
       </form>
     </main>

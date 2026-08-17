@@ -7,6 +7,7 @@ before anything else can fail.
 
 import hashlib
 import logging
+import sqlite3
 from typing import List, Optional
 
 from app.db.repositories import ExecutionRepository, WorkflowRepository
@@ -126,11 +127,25 @@ class ExecutionAgent:
             )
             raise ExecutionError(f"job submission failed: {error}") from error
 
-        execution = self._executions.create_execution(
-            workflow_id=workflow_id,
-            external_job_id=job.job_id,
-            idempotency_key=key,
-        )
+        try:
+            execution = self._executions.create_execution(
+                workflow_id=workflow_id,
+                external_job_id=job.job_id,
+                idempotency_key=key,
+            )
+        except sqlite3.IntegrityError as error:
+            # A duplicate external job ID means the simulator re-issued an ID
+            # that is already recorded. That is an integration fault, not a
+            # bug in the request, so it fails as one rather than as a 500.
+            self._record(
+                workflow_id,
+                status=AgentRunStatus.FAILED,
+                output={"external_job_id": job.job_id},
+                error=str(error),
+            )
+            raise ExecutionError(
+                f"could not record job {job.job_id}: {error}"
+            ) from error
 
         return self._collect(execution, job.job_id, workflow_id)
 

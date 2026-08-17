@@ -10,6 +10,29 @@ The system extracts structured intent, retrieves evidence, selects only catalogu
 
 > **Status:** the 59-story MVP is implemented and tested. It is a local interview project, not a hosted or production service.
 
+## What it looks like
+
+The chat UI shows every stage: what the request was understood as, which tests were selected and why, what actually happened, and what the AI inferred from it.
+
+![Completed run](docs/images/02-completed-run.png)
+
+Observed results and AI inference are deliberately never styled the same. A failure is a fact; a cause is a hypothesis, labelled **Inferred — not confirmed** and required to cite the evidence it used.
+
+<table>
+<tr>
+<td width="50%"><img src="docs/images/01-welcome.png" alt="Welcome screen with example prompts" /></td>
+<td width="50%"><img src="docs/images/03-policy-rejection.png" alt="A request rejected by a jurisdiction rule" /></td>
+</tr>
+<tr>
+<td><b>Start here.</b> Example prompts fill the composer so you can see the phrasing before running anything.</td>
+<td><b>Policy blocks it.</b> Safari is not certified for Nevada, so nothing runs and <code>RULE-005</code> is cited.</td>
+</tr>
+</table>
+
+![Clarification](docs/images/04-clarification.png)
+
+**A vague request is never guessed at.** It asks for the missing fields and names every supported value.
+
 ## Quick start
 
 ```bash
@@ -22,6 +45,7 @@ docker compose up --build
 | http://localhost:5173 | Chat UI |
 | http://localhost:8000 | API |
 | http://localhost:8000/docs | Interactive OpenAPI |
+| http://localhost:8000/jobs | Mock Jenkins (simulated CI) |
 
 Both services bind to `127.0.0.1` only. Reset all local state with `docker compose down -v`.
 
@@ -157,6 +181,7 @@ Reports intent field accuracy, retrieval filter correctness, Hit@K and Recall@K,
 
 ## Documentation
 
+- **[Architecture](ARCHITECTURE.md)** — agents, data flow, component rationale, scaling. Start here.
 - [Documentation index](docs/README.md)
 - [Architecture](docs/architecture.md) — boundaries, data flow, failure handling, production evolution
 - [Module map](docs/module-map.md) — 11 MVP modules and the 59-story breakdown

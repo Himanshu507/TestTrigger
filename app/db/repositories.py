@@ -291,6 +291,25 @@ class ExecutionRepository:
             started_at=started_at,
         )
 
+    def next_external_job_number(self, prefix: str = "JOB-") -> int:
+        """Return one past the highest job number already recorded.
+
+        External job IDs are unique in the executions table, so a restarted
+        simulator must continue the sequence rather than restart it.
+        """
+        with self._database.connect() as connection:
+            rows = connection.execute(
+                "SELECT external_job_id FROM executions WHERE external_job_id LIKE ?",
+                (f"{prefix}%",),
+            ).fetchall()
+
+        highest = 0
+        for row in rows:
+            suffix = row["external_job_id"][len(prefix) :]
+            if suffix.isdigit():
+                highest = max(highest, int(suffix))
+        return highest + 1
+
     def get_execution(self, execution_id: int) -> Optional[Execution]:
         return self._fetch_one("SELECT * FROM executions WHERE id = ?", (execution_id,))
 

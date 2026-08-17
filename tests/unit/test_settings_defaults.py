@@ -59,6 +59,47 @@ def test_confidence_threshold_must_be_a_probability() -> None:
         AppSettings.from_environment({"INTENT_CONFIDENCE_THRESHOLD": "1.5"})
 
 
+def test_both_loopback_hostnames_are_allowed_origins() -> None:
+    """A browser treats localhost and 127.0.0.1 as different origins."""
+    settings = AppSettings.from_environment(
+        {"FRONTEND_ORIGIN": "http://localhost:5173"}
+    )
+
+    assert settings.frontend_origins == [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ]
+
+
+def test_the_sibling_is_added_for_either_spelling() -> None:
+    settings = AppSettings.from_environment(
+        {"FRONTEND_ORIGIN": "http://127.0.0.1:3000"}
+    )
+
+    assert "http://localhost:3000" in settings.frontend_origins
+
+
+def test_several_origins_may_be_configured() -> None:
+    settings = AppSettings.from_environment(
+        {"FRONTEND_ORIGIN": "http://localhost:5173, http://localhost:4173"}
+    )
+
+    assert settings.frontend_origins == [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:4173",
+        "http://127.0.0.1:4173",
+    ]
+
+
+def test_a_non_loopback_origin_gains_no_sibling() -> None:
+    settings = AppSettings.from_environment(
+        {"FRONTEND_ORIGIN": "https://testing.internal"}
+    )
+
+    assert settings.frontend_origins == ["https://testing.internal"]
+
+
 def test_non_sqlite_database_url_is_rejected() -> None:
     with pytest.raises(ValueError, match="sqlite"):
         AppSettings.from_environment(

@@ -26,11 +26,19 @@ from app.llm.prompts import (
 )
 from app.llm.provider import LLMProvider
 from app.models.intent import TestIntent
+from app.models.test_case import Browser, ModuleName, Region, TestScope
 from app.models.workflow import AgentRunStatus
 
 AGENT_NAME = "intent"
 REQUIRED_FIELDS = ("module", "scope", "browser", "region")
 DEFAULT_CONFIDENCE_THRESHOLD = 0.5
+
+_VOCABULARIES = {
+    "module": ModuleName,
+    "scope": TestScope,
+    "browser": Browser,
+    "region": Region,
+}
 
 _NORMALIZERS = {
     "module": normalize_module,
@@ -158,7 +166,8 @@ class IntentAgent:
                 query=query,
                 workflow_id=workflow_id,
                 reason=ClarificationReason.MISSING_FIELDS,
-                detail="the request did not state: " + ", ".join(missing),
+                detail="the request did not state a supported "
+                + "; ".join(_supported_hint(field) for field in missing),
                 missing_fields=missing,
             )
 
@@ -233,6 +242,20 @@ class IntentAgent:
             output_payload=output,
             error=error,
         )
+
+
+def _supported_hint(field: str) -> str:
+    """Name a missing field alongside the values that would satisfy it.
+
+    A field can read as missing either because the request omitted it or
+    because the value it named is outside the vocabulary, and the schema
+    prevented the model from echoing it back. Listing the supported values
+    answers both cases without guessing which one occurred.
+    """
+    vocabulary = _VOCABULARIES.get(field)
+    if vocabulary is None:
+        return field
+    return f"{field} ({', '.join(member.value for member in vocabulary)})"
 
 
 def _normalize_fields(raw: Dict[str, Any]) -> tuple:

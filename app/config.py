@@ -1,7 +1,7 @@
 """Typed local configuration loaded from the environment."""
 
 import os
-from typing import Mapping, Optional
+from typing import List, Mapping, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, SecretStr
 
@@ -35,6 +35,25 @@ class AppSettings(BaseModel):
         default=DEFAULT_INTENT_CONFIDENCE_THRESHOLD, ge=0.0, le=1.0
     )
     llm_timeout_seconds: float = Field(default=DEFAULT_LLM_TIMEOUT_SECONDS, gt=0.0)
+
+    @property
+    def frontend_origins(self) -> List[str]:
+        """Browser origins allowed by CORS.
+
+        `FRONTEND_ORIGIN` may list several, comma separated. Each entry also
+        contributes its loopback sibling, because `localhost:5173` and
+        `127.0.0.1:5173` are different origins to a browser and a local user
+        will reasonably type either one.
+        """
+        origins: List[str] = []
+        for entry in self.frontend_origin.split(","):
+            origin = entry.strip()
+            if not origin:
+                continue
+            for candidate in (origin, _loopback_sibling(origin)):
+                if candidate and candidate not in origins:
+                    origins.append(candidate)
+        return origins
 
     @property
     def llm_enabled(self) -> bool:
@@ -80,6 +99,17 @@ class AppSettings(BaseModel):
                 source, "LLM_TIMEOUT_SECONDS", DEFAULT_LLM_TIMEOUT_SECONDS
             ),
         )
+
+
+LOOPBACK_HOSTS = (("localhost", "127.0.0.1"), ("127.0.0.1", "localhost"))
+
+
+def _loopback_sibling(origin: str) -> Optional[str]:
+    """Return the same origin addressed by the other loopback hostname."""
+    for host, sibling in LOOPBACK_HOSTS:
+        if f"//{host}:" in origin or origin.endswith(f"//{host}"):
+            return origin.replace(host, sibling, 1)
+    return None
 
 
 def _read(source: Mapping[str, str], key: str) -> Optional[str]:

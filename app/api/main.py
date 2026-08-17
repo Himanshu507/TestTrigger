@@ -24,6 +24,7 @@ from app.api.errors import (
     unhandled_error_handler,
     validation_error_handler,
 )
+from app.api.jenkins_routes import jenkins_router
 from app.api.routes import router
 from app.api.service import WorkflowInspector
 from app.catalog import TestCatalog
@@ -77,7 +78,7 @@ def create_app(
     application = FastAPI(title=TITLE, description=DESCRIPTION, version=VERSION)
     application.add_middleware(
         CORSMiddleware,
-        allow_origins=[settings.frontend_origin],
+        allow_origins=settings.frontend_origins,
         allow_methods=["GET", "POST"],
         allow_headers=["Content-Type", "Idempotency-Key"],
     )
@@ -94,6 +95,7 @@ def create_app(
     application.add_exception_handler(RequestValidationError, validation_error_handler)
     application.add_exception_handler(Exception, unhandled_error_handler)
     application.include_router(router)
+    application.include_router(jenkins_router)
     _mount_frontend(application)
     return application
 
@@ -139,7 +141,12 @@ def _build_dependencies(settings: AppSettings):
 
     workflows = WorkflowRepository(database)
     catalog = TestCatalog.load_default()
-    jenkins = MockJenkinsService()
+    executions = ExecutionRepository(database)
+    # Continue the job sequence, since job state is in-memory but the
+    # executions it produced are durable and their IDs are unique.
+    jenkins = MockJenkinsService(
+        start_number=executions.next_external_job_number()
+    )
 
     try:
         provider = OpenAIProvider(settings, timeout_seconds=settings.llm_timeout_seconds)
@@ -164,9 +171,7 @@ def _build_dependencies(settings: AppSettings):
         planning_service=PlanningService(
             catalog, repository=workflows, plan_repository=PlanRepository(database)
         ),
-        execution_agent=ExecutionAgent(
-            jenkins, ExecutionRepository(database), repository=workflows
-        ),
+        execution_agent=ExecutionAgent(jenkins, executions, repository=workflows),
         workflows=workflows,
         events=EventRepository(database),
         analysis=AnalysisRepository(database),

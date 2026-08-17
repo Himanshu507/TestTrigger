@@ -213,12 +213,56 @@ def test_structured_stages_are_rendered(page) -> None:
     _submit(page, "Run payment smoke tests on Chrome in US")
     page.get_by_text("Selected tests").wait_for()
 
-    text = page.locator(".message.assistant").last.inner_text()
-    assert "module: payment" in text
-    assert "PAY-003" in text
-    assert "Matches the payment module and smoke scope" in text
-    assert "JOB-2001" in text
+    text = page.locator(".message.assistant").last.inner_text().lower()
+    # Intent renders as key/value pills rather than prose.
+    assert "module" in text and "payment" in text
+    assert "browser" in text and "chrome" in text
+    assert "pay-003" in text
+    assert "matches the payment module and smoke scope" in text
+    assert "job-2001" in text
     assert "1840ms" in text
+
+
+def test_a_suggestion_fills_the_composer_without_sending(page) -> None:
+    """Suggestions let a new user see the phrasing before committing to a run."""
+    captured = _mock(page)
+
+    page.locator(".chip").first.click()
+
+    assert "payment" in page.input_value("#query")
+    assert captured["requests"] == []
+
+
+def test_a_dry_run_suggestion_also_sets_the_toggle(page) -> None:
+    _mock(page)
+
+    page.locator('.chip[data-dry-run="true"]').first.click()
+
+    assert page.is_checked("#dry-run")
+
+
+def test_results_are_visually_marked_as_passed_or_failed(page) -> None:
+    _mock(page)
+    _submit(page, "Run payment smoke tests on Chrome in US")
+    page.locator(".result.is-failed").wait_for()
+
+    assert page.locator(".result.is-passed").count() == 1
+    assert page.locator(".result.is-failed").count() == 1
+
+
+def test_a_risk_score_is_shown_as_a_proportional_bar(page) -> None:
+    _mock(page)
+    _submit(page, "Run payment smoke tests on Chrome in US")
+    page.locator(".risk-fill").wait_for()
+
+    assert page.locator(".risk-fill").first.get_attribute("style") == "width: 90%;"
+
+
+def test_the_connection_badge_reports_an_unreachable_backend(page) -> None:
+    """No /health route is served here, so the badge must show the failure."""
+    page.wait_for_selector(".connection.down")
+
+    assert "unreachable" in page.locator("#connection-text").inner_text().lower()
 
 
 def test_observed_results_are_separated_from_inference(page) -> None:

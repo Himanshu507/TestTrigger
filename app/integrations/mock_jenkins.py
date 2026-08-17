@@ -88,12 +88,19 @@ class MockJenkinsService:
         seed: str = DEFAULT_SEED,
         force_job_failure: bool = False,
         unavailable: bool = False,
+        start_number: int = FIRST_JOB_NUMBER,
     ) -> None:
+        """`start_number` continues the job ID sequence across a restart.
+
+        Job state is in-memory, so a fresh process would otherwise re-issue
+        IDs a caller has already recorded durably. A real CI system never
+        reuses a job ID, and callers are entitled to assume that.
+        """
         self._seed = seed
         self._force_job_failure = force_job_failure
         self._unavailable = unavailable
         self._jobs: Dict[str, Job] = {}
-        self._next_number = FIRST_JOB_NUMBER
+        self._next_number = max(start_number, FIRST_JOB_NUMBER)
 
     def submit(self, request: JobRequest) -> Job:
         """Accept a job and return it queued with a stable JOB-* identifier."""

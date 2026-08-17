@@ -12,11 +12,14 @@
   {
     "source_id": "RULE-002",
     "type": "jurisdiction_rule",
-    "content": "US-Nevada enforces a maximum single-withdrawal limit. A withdrawal above the limit must be rejected before it reaches the payment provider.",
+    "content": "US-Nevada enforces a maximum single-withdrawal limit of $2,500 and a maximum win limit of $10,000. A withdrawal above the limit must be rejected before it reaches the payment provider, and a win above the limit requires manual review.",
     "metadata": {
       "region": "US-Nevada",
-      "applies_to_modules": ["withdrawal"],
-      "requirement": "maximum single-withdrawal limit"
+      "applies_to_modules": ["withdrawal", "payment"],
+      "requirement": "maximum single-withdrawal limit",
+      "max_withdrawal_usd": 2500,
+      "max_win_usd": 10000,
+      "requires_manual_review_above_usd": 10000
     }
   },
   {
@@ -32,11 +35,13 @@
   {
     "source_id": "RULE-004",
     "type": "jurisdiction_rule",
-    "content": "UK flows must display gambling-spend affordability messaging before a withdrawal is confirmed.",
+    "content": "UK flows must display gambling-spend affordability messaging before a withdrawal above £2,000 is confirmed, and enforce a £5,000 daily withdrawal ceiling.",
     "metadata": {
       "region": "UK",
       "applies_to_modules": ["withdrawal"],
-      "requirement": "affordability messaging"
+      "requirement": "affordability messaging",
+      "affordability_check_above_gbp": 2000,
+      "max_daily_withdrawal_gbp": 5000
     }
   },
   {
