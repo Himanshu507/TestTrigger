@@ -1,0 +1,41 @@
+# Environment secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+build/
+dist/
+*.egg-info/
+
+# Node / frontend
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Local runtime data and logs
+*.log
+*.sqlite
+*.sqlite3
+*.db
+chroma_data/
+chroma_db/
+local_data/
+
+# IDE and OS files
+.idea/
+.vscode/
+.DS_Store
