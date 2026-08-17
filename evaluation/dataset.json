@@ -1,0 +1,194 @@
+{
+  "description": "Small, manually reviewable evaluation set. Evidence of engineering judgement, not a claim of statistical model validation.",
+  "intent_cases": [
+    {
+      "id": "INT-EVAL-01",
+      "query": "Run smoke tests for the payment module on Chrome in the US region",
+      "expected": {"module": "payment", "scope": "smoke", "browser": "chrome", "region": "US"}
+    },
+    {
+      "id": "INT-EVAL-02",
+      "query": "Please run the wallet regression suite in Safari for the UK",
+      "expected": {"module": "wallet", "scope": "regression", "browser": "safari", "region": "UK"}
+    },
+    {
+      "id": "INT-EVAL-03",
+      "query": "Kick off checkout smoke tests using Google Chrome in the United States",
+      "expected": {"module": "checkout", "scope": "smoke", "browser": "chrome", "region": "US"},
+      "note": "Surface variations must normalize to catalog values."
+    },
+    {
+      "id": "INT-EVAL-04",
+      "query": "Run withdrawal smoke tests on Firefox in Nevada",
+      "expected": {"module": "withdrawal", "scope": "smoke", "browser": "firefox", "region": "US-Nevada"}
+    },
+    {
+      "id": "INT-EVAL-05",
+      "query": "Regression tests for login on Mozilla Firefox in Europe",
+      "expected": {"module": "login", "scope": "regression", "browser": "firefox", "region": "EU"}
+    },
+    {
+      "id": "INT-EVAL-06",
+      "query": "Run some tests",
+      "expected": null,
+      "expected_missing": ["module", "scope", "browser", "region"],
+      "note": "An unusable request must ask for clarification, never guess."
+    },
+    {
+      "id": "INT-EVAL-07",
+      "query": "Run payment smoke tests on Microsoft Edge in the US",
+      "expected": null,
+      "expected_unsupported": ["browser"],
+      "provider_output": {
+        "module": "payment",
+        "scope": "smoke",
+        "browser": "edge",
+        "region": "US",
+        "environment": null,
+        "confidence": 0.9,
+        "missing_fields": []
+      },
+      "note": "Every other field is correct, so only the unsupported browser may block it."
+    },
+    {
+      "id": "INT-EVAL-08",
+      "query": "Run payment tests on Chrome in the US",
+      "expected": null,
+      "expected_missing": ["scope"],
+      "provider_output": {
+        "module": "payment",
+        "scope": null,
+        "browser": "chrome",
+        "region": "US",
+        "environment": null,
+        "confidence": 0.8,
+        "missing_fields": ["scope"]
+      },
+      "note": "Scope alone is missing and cannot be safely inferred."
+    }
+  ],
+  "retrieval_cases": [
+    {
+      "id": "RET-EVAL-01",
+      "intent": {"module": "payment", "scope": "smoke", "browser": "chrome", "region": "US"},
+      "relevant_source_ids": ["DOC-PAY-001", "DOC-PAY-003", "HIST-001", "HIST-003"],
+      "forbidden_test_ids": ["PAY-002", "WAL-001", "CHK-001", "LOG-001", "WDR-001"]
+    },
+    {
+      "id": "RET-EVAL-02",
+      "intent": {"module": "payment", "scope": "smoke", "browser": "chrome", "region": "US-Nevada"},
+      "relevant_source_ids": ["DOC-PAY-003", "HIST-002", "RULE-001"],
+      "forbidden_test_ids": ["PAY-001", "PAY-002"],
+      "note": "Only PAY-003 supports US-Nevada."
+    },
+    {
+      "id": "RET-EVAL-03",
+      "intent": {"module": "wallet", "scope": "regression", "browser": "safari", "region": "UK"},
+      "relevant_source_ids": ["DOC-WAL-002", "HIST-005"],
+      "forbidden_test_ids": ["WAL-001", "PAY-001"]
+    },
+    {
+      "id": "RET-EVAL-04",
+      "intent": {"module": "withdrawal", "scope": "smoke", "browser": "firefox", "region": "US-Nevada"},
+      "relevant_source_ids": ["DOC-WDR-001", "HIST-004", "RULE-001", "RULE-002"],
+      "forbidden_test_ids": ["WDR-002", "WDR-003"]
+    },
+    {
+      "id": "RET-EVAL-05",
+      "intent": {"module": "login", "scope": "regression", "browser": "firefox", "region": "EU"},
+      "relevant_source_ids": ["DOC-LOG-002"],
+      "forbidden_test_ids": ["LOG-001"]
+    }
+  ],
+  "analysis_cases": [
+    {
+      "id": "ANL-EVAL-01",
+      "name": "grounded failure explanation",
+      "results": [
+        {"test_id": "PAY-001", "status": "passed", "duration_ms": 900},
+        {"test_id": "PAY-003", "status": "failed", "duration_ms": 1840, "failure_reason": "3DS redirect timeout"}
+      ],
+      "evidence_source_ids": ["HIST-001", "DOC-PAY-003"],
+      "model_output": {
+        "summary": "1 of 2 tests failed.",
+        "observations": ["PAY-003 failed after 1840ms during the 3DS redirect"],
+        "insufficient_evidence": false,
+        "failures": [
+          {
+            "test_id": "PAY-003",
+            "observed_facts": ["The execution timed out during the 3DS redirect"],
+            "likely_cause": "Consistent with the recorded 3DS redirect timeout pattern",
+            "confidence": 0.82,
+            "evidence_source_ids": ["HIST-001"],
+            "recommendations": ["Review gateway timeout configuration"]
+          }
+        ]
+      },
+      "expect_grounded": true
+    },
+    {
+      "id": "ANL-EVAL-02",
+      "name": "cause invented for a test that never ran",
+      "results": [{"test_id": "PAY-001", "status": "passed", "duration_ms": 900}],
+      "evidence_source_ids": ["HIST-001"],
+      "model_output": {
+        "summary": "A test failed.",
+        "observations": [],
+        "insufficient_evidence": false,
+        "failures": [
+          {
+            "test_id": "WAL-002",
+            "observed_facts": ["invented"],
+            "likely_cause": "invented",
+            "confidence": 0.9,
+            "evidence_source_ids": ["HIST-001"],
+            "recommendations": []
+          }
+        ]
+      },
+      "expect_grounded": false,
+      "note": "Must be rejected: the test was not part of this execution."
+    },
+    {
+      "id": "ANL-EVAL-03",
+      "name": "citation of evidence that was never retrieved",
+      "results": [
+        {"test_id": "PAY-003", "status": "failed", "duration_ms": 1840, "failure_reason": "3DS redirect timeout"}
+      ],
+      "evidence_source_ids": ["DOC-PAY-003"],
+      "model_output": {
+        "summary": "1 of 1 tests failed.",
+        "observations": [],
+        "insufficient_evidence": false,
+        "failures": [
+          {
+            "test_id": "PAY-003",
+            "observed_facts": ["Timed out"],
+            "likely_cause": "Gateway outage",
+            "confidence": 0.95,
+            "evidence_source_ids": ["HIST-999"],
+            "recommendations": []
+          }
+        ]
+      },
+      "expect_grounded": false,
+      "note": "Must be rejected: HIST-999 was never supplied."
+    },
+    {
+      "id": "ANL-EVAL-04",
+      "name": "honest report when evidence is thin",
+      "results": [
+        {"test_id": "PAY-003", "status": "failed", "duration_ms": 1840, "failure_reason": "3DS redirect timeout"}
+      ],
+      "evidence_source_ids": [],
+      "model_output": {
+        "summary": "1 of 1 tests failed.",
+        "observations": ["PAY-003 failed after 1840ms"],
+        "insufficient_evidence": true,
+        "failures": []
+      },
+      "expect_grounded": true,
+      "note": "Stating insufficient evidence is the correct behaviour, not a failure."
+    }
+  ]
+}

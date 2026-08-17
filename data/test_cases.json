@@ -1,0 +1,122 @@
+[
+  {
+    "id": "PAY-001",
+    "name": "Card Authorization",
+    "module": "payment",
+    "scope": "smoke",
+    "browsers": ["chrome", "firefox"],
+    "regions": ["US", "EU"],
+    "criticality": "high",
+    "description": "Validates a successful card authorization flow."
+  },
+  {
+    "id": "PAY-002",
+    "name": "Card Refund",
+    "module": "payment",
+    "scope": "regression",
+    "browsers": ["chrome", "firefox", "safari"],
+    "regions": ["US", "EU", "UK"],
+    "criticality": "medium",
+    "description": "Validates a full card refund flow."
+  },
+  {
+    "id": "PAY-003",
+    "name": "3DS Challenge",
+    "module": "payment",
+    "scope": "smoke",
+    "browsers": ["chrome"],
+    "regions": ["US", "US-Nevada"],
+    "criticality": "high",
+    "description": "Validates a payment requiring a 3DS redirect."
+  },
+  {
+    "id": "WAL-001",
+    "name": "Wallet Top Up",
+    "module": "wallet",
+    "scope": "smoke",
+    "browsers": ["chrome", "firefox"],
+    "regions": ["US", "EU"],
+    "criticality": "high",
+    "description": "Validates adding funds to a wallet."
+  },
+  {
+    "id": "WAL-002",
+    "name": "Wallet Transaction History",
+    "module": "wallet",
+    "scope": "regression",
+    "browsers": ["chrome", "safari"],
+    "regions": ["EU", "UK"],
+    "criticality": "medium",
+    "description": "Validates wallet transaction history rendering."
+  },
+  {
+    "id": "CHK-001",
+    "name": "Guest Checkout",
+    "module": "checkout",
+    "scope": "smoke",
+    "browsers": ["chrome", "firefox", "safari"],
+    "regions": ["US", "EU", "UK"],
+    "criticality": "high",
+    "description": "Validates checkout without an authenticated account."
+  },
+  {
+    "id": "CHK-002",
+    "name": "Promotion Code",
+    "module": "checkout",
+    "scope": "regression",
+    "browsers": ["chrome", "firefox"],
+    "regions": ["US", "EU"],
+    "criticality": "medium",
+    "description": "Validates promotion code application at checkout."
+  },
+  {
+    "id": "LOG-001",
+    "name": "Password Login",
+    "module": "login",
+    "scope": "smoke",
+    "browsers": ["chrome", "firefox", "safari"],
+    "regions": ["US", "EU", "UK"],
+    "criticality": "high",
+    "description": "Validates login with a valid password."
+  },
+  {
+    "id": "LOG-002",
+    "name": "Password Reset",
+    "module": "login",
+    "scope": "regression",
+    "browsers": ["chrome", "firefox"],
+    "regions": ["US", "EU"],
+    "criticality": "medium",
+    "description": "Validates the password reset workflow."
+  },
+  {
+    "id": "WDR-001",
+    "name": "Bank Withdrawal",
+    "module": "withdrawal",
+    "scope": "smoke",
+    "browsers": ["chrome", "firefox"],
+    "regions": ["US", "US-Nevada"],
+    "criticality": "high",
+    "description": "Validates a bank withdrawal request."
+  },
+  {
+    "id": "WDR-002",
+    "name": "Withdrawal Limit",
+    "module": "withdrawal",
+    "scope": "regression",
+    "browsers": ["chrome", "safari"],
+    "regions": ["EU", "UK"],
+    "criticality": "high",
+    "description": "Validates regional withdrawal limit enforcement."
+  },
+  {
+    "id": "WDR-003",
+    "name": "Withdrawal Cancellation",
+    "module": "withdrawal",
+    "scope": "regression",
+    "browsers": ["chrome", "firefox"],
+    "regions": ["US", "EU"],
+    "criticality": "low",
+    "description": "Validates cancellation of a pending withdrawal."
+  }
+]

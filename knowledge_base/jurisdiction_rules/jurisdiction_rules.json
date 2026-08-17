@@ -1,0 +1,53 @@
+[
+  {
+    "source_id": "RULE-001",
+    "type": "jurisdiction_rule",
+    "content": "US-Nevada requires an additional identity validation step before any withdrawal or payment authorization completes. Tests covering those flows must run with the Nevada validation profile enabled.",
+    "metadata": {
+      "region": "US-Nevada",
+      "applies_to_modules": ["withdrawal", "payment"],
+      "requirement": "additional identity validation"
+    }
+  },
+  {
+    "source_id": "RULE-002",
+    "type": "jurisdiction_rule",
+    "content": "US-Nevada enforces a maximum single-withdrawal limit. A withdrawal above the limit must be rejected before it reaches the payment provider.",
+    "metadata": {
+      "region": "US-Nevada",
+      "applies_to_modules": ["withdrawal"],
+      "requirement": "maximum single-withdrawal limit"
+    }
+  },
+  {
+    "source_id": "RULE-003",
+    "type": "jurisdiction_rule",
+    "content": "EU flows must apply Strong Customer Authentication to payment authorization. A 3DS challenge is expected rather than optional.",
+    "metadata": {
+      "region": "EU",
+      "applies_to_modules": ["payment", "checkout"],
+      "requirement": "strong customer authentication"
+    }
+  },
+  {
+    "source_id": "RULE-004",
+    "type": "jurisdiction_rule",
+    "content": "UK flows must display gambling-spend affordability messaging before a withdrawal is confirmed.",
+    "metadata": {
+      "region": "UK",
+      "applies_to_modules": ["withdrawal"],
+      "requirement": "affordability messaging"
+    }
+  },
+  {
+    "source_id": "RULE-005",
+    "type": "jurisdiction_rule",
+    "content": "Safari is not certified for the Nevada validation profile, so US-Nevada coverage is limited to Chrome and Firefox.",
+    "metadata": {
+      "region": "US-Nevada",
+      "applies_to_modules": ["withdrawal", "payment"],
+      "requirement": "unsupported browser: safari",
+      "unsupported_browsers": ["safari"]
+    }
+  }
+]

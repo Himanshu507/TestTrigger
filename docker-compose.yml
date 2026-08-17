@@ -1,0 +1,65 @@
+# Local development and demo runtime.
+#
+# This is not a deployment strategy: services bind to localhost only, there is
+# no authentication, and no image is intended for distribution. Its job is to
+# make the demo reproducible with one command.
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    # Bound to the loopback interface so the demo is not exposed on the network.
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      # Injected from the shell or an ignored .env file, never baked into an
+      # image layer and never passed to the frontend.
+      OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+      OPENAI_MODEL: "${OPENAI_MODEL:-gpt-4o-mini}"
+      OPENAI_EMBEDDING_MODEL: "${OPENAI_EMBEDDING_MODEL:-text-embedding-3-small}"
+      # Four slashes: sqlite:/// introduces a path relative to the working
+      # directory, which would place the database inside the container layer
+      # instead of on the mounted volume.
+      DATABASE_URL: "sqlite:////srv/data-local/test-trigger.db"
+      CHROMA_PERSIST_DIRECTORY: "/srv/data-local/chroma"
+      FRONTEND_ORIGIN: "${FRONTEND_ORIGIN:-http://localhost:5173}"
+      INTENT_CONFIDENCE_THRESHOLD: "${INTENT_CONFIDENCE_THRESHOLD:-0.5}"
+      LLM_TIMEOUT_SECONDS: "${LLM_TIMEOUT_SECONDS:-30}"
+    volumes:
+      # Seeded and ingested demo state survives a restart.
+      - test-trigger-data:/srv/data-local
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=4).status < 500 else 1)"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "127.0.0.1:5173:80"
+    environment:
+      # The only value the browser receives. Adding a key here would publish it.
+      API_BASE_URL: "${API_BASE_URL:-http://localhost:8000}"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1/"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    restart: unless-stopped
+
+volumes:
+  test-trigger-data:

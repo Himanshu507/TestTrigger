@@ -1,0 +1,86 @@
+[
+  {
+    "source_id": "HIST-001",
+    "type": "historical_failure",
+    "content": "PAY-003 failed on Chrome in US on 2026-07-30: the 3DS redirect timed out after 30s waiting for the issuer callback.",
+    "metadata": {
+      "test_id": "PAY-003",
+      "browser": "chrome",
+      "region": "US",
+      "date": "2026-07-30",
+      "failure": "3DS redirect timeout"
+    }
+  },
+  {
+    "source_id": "HIST-002",
+    "type": "historical_failure",
+    "content": "PAY-003 failed on Chrome in US-Nevada on 2026-08-04: the 3DS redirect timed out during the additional Nevada validation step.",
+    "metadata": {
+      "test_id": "PAY-003",
+      "browser": "chrome",
+      "region": "US-Nevada",
+      "date": "2026-08-04",
+      "failure": "3DS redirect timeout"
+    }
+  },
+  {
+    "source_id": "HIST-003",
+    "type": "historical_failure",
+    "content": "PAY-003 failed on Chrome in US on 2026-08-11: the 3DS callback returned a 504 from the payment gateway.",
+    "metadata": {
+      "test_id": "PAY-003",
+      "browser": "chrome",
+      "region": "US",
+      "date": "2026-08-11",
+      "failure": "3DS callback gateway timeout"
+    }
+  },
+  {
+    "source_id": "HIST-004",
+    "type": "historical_failure",
+    "content": "WDR-001 failed on Firefox in US-Nevada on 2026-08-02: the withdrawal was blocked because the jurisdiction limit check returned no decision.",
+    "metadata": {
+      "test_id": "WDR-001",
+      "browser": "firefox",
+      "region": "US-Nevada",
+      "date": "2026-08-02",
+      "failure": "jurisdiction limit check returned no decision"
+    }
+  },
+  {
+    "source_id": "HIST-005",
+    "type": "historical_failure",
+    "content": "WAL-002 failed on Safari in UK on 2026-07-22: transaction history rendered an empty list because pagination returned a null cursor.",
+    "metadata": {
+      "test_id": "WAL-002",
+      "browser": "safari",
+      "region": "UK",
+      "date": "2026-07-22",
+      "failure": "null pagination cursor"
+    }
+  },
+  {
+    "source_id": "HIST-006",
+    "type": "historical_failure",
+    "content": "LOG-001 failed on Safari in EU on 2026-06-18: the session cookie was rejected under the stricter Safari cross-site policy.",
+    "metadata": {
+      "test_id": "LOG-001",
+      "browser": "safari",
+      "region": "EU",
+      "date": "2026-06-18",
+      "failure": "session cookie rejected"
+    }
+  },
+  {
+    "source_id": "HIST-007",
+    "type": "historical_failure",
+    "content": "CHK-002 failed on Chrome in EU on 2026-05-09: an expired promotion code was accepted and the order total was not adjusted.",
+    "metadata": {
+      "test_id": "CHK-002",
+      "browser": "chrome",
+      "region": "EU",
+      "date": "2026-05-09",
+      "failure": "expired promotion code accepted"
+    }
+  }
+]

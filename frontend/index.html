@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Test Trigger — Local Test Assistant</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="masthead">
+      <h1>Test Trigger</h1>
+      <p class="subtitle">Local test assistant. Describe the tests you want to run.</p>
+    </header>
+
+    <main class="layout">
+      <section
+        id="conversation"
+        class="conversation"
+        aria-live="polite"
+        aria-label="Conversation"
+      >
+        <article class="message assistant">
+          <div class="bubble">
+            <p>
+              Ask for a test run in plain language, for example
+              <em>“Run smoke tests for the payment module on Chrome in the US region.”</em>
+            </p>
+            <p class="hint">
+              Turn on <strong>Dry run</strong> to see the plan without starting a job.
+            </p>
+          </div>
+        </article>
+      </section>
+
+      <form id="composer" class="composer" autocomplete="off">
+        <label class="visually-hidden" for="query">Your testing request</label>
+        <textarea
+          id="query"
+          name="query"
+          rows="2"
+          placeholder="Run smoke tests for the payment module on Chrome in the US region"
+          aria-describedby="composer-help"
+          required
+        ></textarea>
+
+        <div class="composer-actions">
+          <div class="toggle">
+            <input type="checkbox" id="dry-run" name="dry-run" />
+            <label for="dry-run">Dry run</label>
+          </div>
+          <p id="composer-help" class="hint">
+            Press Enter to send, Shift+Enter for a new line.
+          </p>
+          <button id="send" type="submit">Send</button>
+        </div>
+      </form>
+    </main>
+
+    <footer class="footnote">
+      Runs locally against your own backend. Model calls stay on the server.
+    </footer>
+
+    <!--
+      config.js is written by the container entrypoint and sets the local API
+      base URL. It is optional: served from the backend itself, same-origin
+      relative requests already work. It carries no credential.
+    -->
+    <script src="./config.js" onerror="void 0"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>
