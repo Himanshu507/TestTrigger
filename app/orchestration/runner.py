@@ -19,17 +19,25 @@ class WorkflowRunner:
         self._dependencies = dependencies
         self._graph = build_graph(dependencies)
 
+    def find_by_idempotency_key(self, idempotency_key: str) -> Optional[Workflow]:
+        """Return a workflow an earlier identical request already produced."""
+        return self._dependencies.workflows.find_by_idempotency_key(idempotency_key)
+
     def run(
         self,
         query: str,
         *,
         dry_run: bool = False,
         workflow_id: Optional[str] = None,
+        idempotency_key: Optional[str] = None,
     ) -> TestWorkflowState:
         """Create the workflow record first, so an ID exists before any agent runs."""
         identifier = workflow_id or self._next_workflow_id()
         self._dependencies.workflows.create_workflow(
-            workflow_id=identifier, query=query, dry_run=dry_run
+            workflow_id=identifier,
+            query=query,
+            dry_run=dry_run,
+            idempotency_key=idempotency_key,
         )
         self._dependencies.events.record_event(
             workflow_id=identifier,

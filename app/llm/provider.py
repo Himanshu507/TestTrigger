@@ -5,7 +5,9 @@ seam for a future provider and makes fakes trivial in tests.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict
+from typing import Any, Dict, List, Sequence
+
+from app.llm.errors import ProviderNotConfiguredError
 
 
 class LLMProvider(ABC):
@@ -27,3 +29,17 @@ class LLMProvider(ABC):
             ProviderUnavailableError: transport failure or provider-side error.
             ProviderResponseError: a response arrived but was not usable JSON.
         """
+
+
+class NullProvider(LLMProvider):
+    """Stands in when no API key is configured.
+
+    Raising a typed provider error keeps unconfigured behaviour identical to an
+    outage: callers already degrade correctly, so the deterministic core stays
+    serviceable instead of the app failing to start.
+    """
+
+    def extract_structured(self, **kwargs: Any) -> Dict[str, Any]:
+        raise ProviderNotConfiguredError(
+            "OPENAI_API_KEY is not set; LLM features are disabled"
+        )

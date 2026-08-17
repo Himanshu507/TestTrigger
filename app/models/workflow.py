@@ -104,6 +104,7 @@ class Workflow(BaseModel):
     query: str = Field(min_length=1)
     status: WorkflowStatus
     dry_run: bool
+    idempotency_key: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 

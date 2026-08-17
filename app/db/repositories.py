@@ -52,10 +52,22 @@ class WorkflowRepository:
     def __init__(self, database: Database) -> None:
         self._database = database
 
+    @property
+    def database(self) -> Database:
+        """Expose the shared connection factory so sibling repositories can reuse it."""
+        return self._database
+
     def initialize(self) -> None:
         self._database.initialize()
 
-    def create_workflow(self, *, workflow_id: str, query: str, dry_run: bool) -> Workflow:
+    def create_workflow(
+        self,
+        *,
+        workflow_id: str,
+        query: str,
+        dry_run: bool,
+        idempotency_key: Optional[str] = None,
+    ) -> Workflow:
         """Create the lifecycle root in the initial ``RECEIVED`` state."""
         now = _utc_now()
         workflow = Workflow(
@@ -63,25 +75,37 @@ class WorkflowRepository:
             query=query,
             status=WorkflowStatus.RECEIVED,
             dry_run=dry_run,
+            idempotency_key=idempotency_key,
             created_at=now,
             updated_at=now,
         )
         with self._database.connect() as connection:
             connection.execute(
                 """
-                INSERT INTO workflows (id, query, status, dry_run, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO workflows (
+                    id, query, status, dry_run, idempotency_key, created_at, updated_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     workflow.id,
                     workflow.query,
                     workflow.status.value,
                     int(workflow.dry_run),
+                    workflow.idempotency_key,
                     _to_iso(workflow.created_at),
                     _to_iso(workflow.updated_at),
                 ),
             )
         return workflow
+
+    def find_by_idempotency_key(self, idempotency_key: str) -> Optional[Workflow]:
+        """Return a prior workflow for this key so a retry replays, not repeats."""
+        with self._database.connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM workflows WHERE idempotency_key = ?", (idempotency_key,)
+            ).fetchone()
+        return _to_workflow(row) if row is not None else None
 
     def get_workflow(self, workflow_id: str) -> Optional[Workflow]:
         with self._database.connect() as connection:
@@ -485,6 +509,7 @@ def _to_workflow(row: sqlite3.Row) -> Workflow:
         query=row["query"],
         status=WorkflowStatus(row["status"]),
         dry_run=bool(row["dry_run"]),
+        idempotency_key=row["idempotency_key"],
         created_at=datetime.fromisoformat(row["created_at"]),
         updated_at=datetime.fromisoformat(row["updated_at"]),
     )

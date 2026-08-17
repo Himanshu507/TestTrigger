@@ -1,0 +1,163 @@
+"""Application assembly.
+
+The one place real collaborators are constructed. Everything below the API
+receives them, which is what keeps routes thin and tests able to swap any
+boundary.
+"""
+
+from typing import Optional
+
+from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
+
+from app.agents.analysis import ResultAnalyzer
+from app.agents.execution import ExecutionAgent
+from app.agents.intent import IntentAgent
+from app.agents.retrieval import RetrievalAgent
+from app.api.errors import (
+    ApiError,
+    api_error_handler,
+    unhandled_error_handler,
+    validation_error_handler,
+)
+from app.api.routes import router
+from app.api.service import WorkflowInspector
+from app.catalog import TestCatalog
+from app.config import AppSettings
+from app.db.database import Database
+from app.db.repositories import (
+    AnalysisRepository,
+    EventRepository,
+    ExecutionRepository,
+    PlanRepository,
+    WorkflowRepository,
+)
+from app.integrations.mock_jenkins import MockJenkinsService
+from app.llm.embeddings import NullEmbeddingProvider, OpenAIEmbeddingProvider
+from app.llm.errors import ProviderNotConfiguredError
+from app.llm.openai_provider import OpenAIProvider
+from app.llm.provider import NullProvider
+from app.orchestration.dependencies import WorkflowDependencies
+from app.services.planning_service import PlanningService
+from app.orchestration.runner import WorkflowRunner
+from app.retrieval.store import ChromaVectorStore
+
+TITLE = "Test Trigger"
+DESCRIPTION = (
+    "Turns a natural-language testing request into a policy-validated, "
+    "executed, and evidence-grounded workflow."
+)
+VERSION = "0.1.0"
+
+
+def create_app(
+    settings: Optional[AppSettings] = None,
+    *,
+    dependencies: Optional[WorkflowDependencies] = None,
+    vector_store=None,
+    jenkins=None,
+) -> FastAPI:
+    """Build the API.
+
+    Passing ``dependencies`` skips real provider construction, which is how the
+    tests run the full HTTP surface offline.
+    """
+    settings = settings or AppSettings.from_environment()
+
+    if dependencies is None:
+        dependencies, vector_store, jenkins = _build_dependencies(settings)
+
+    application = FastAPI(title=TITLE, description=DESCRIPTION, version=VERSION)
+    application.add_middleware(
+        CORSMiddleware,
+        allow_origins=[settings.frontend_origin],
+        allow_methods=["GET", "POST"],
+        allow_headers=["Content-Type", "Idempotency-Key"],
+    )
+
+    application.state.settings = settings
+    application.state.runner = WorkflowRunner(dependencies)
+    application.state.workflows = dependencies.workflows
+    application.state.execution_agent = dependencies.execution_agent
+    application.state.vector_store = vector_store
+    application.state.jenkins = jenkins
+    application.state.inspector = _build_inspector(dependencies)
+
+    application.add_exception_handler(ApiError, api_error_handler)
+    application.add_exception_handler(RequestValidationError, validation_error_handler)
+    application.add_exception_handler(Exception, unhandled_error_handler)
+    application.include_router(router)
+    return application
+
+
+def _build_inspector(dependencies: WorkflowDependencies) -> WorkflowInspector:
+    database = dependencies.workflows.database
+    return WorkflowInspector(
+        workflows=dependencies.workflows,
+        plans=PlanRepository(database),
+        executions=ExecutionRepository(database),
+        analyses=dependencies.analysis or AnalysisRepository(database),
+        events=dependencies.events,
+    )
+
+
+def _build_dependencies(settings: AppSettings):
+    """Construct real collaborators from settings.
+
+    A missing API key disables the LLM paths rather than failing startup: intent
+    parsing then reports a provider error and analysis uses the deterministic
+    fallback, which keeps the deterministic core serviceable.
+    """
+    database = Database(settings.database_path)
+    database.initialize()
+
+    workflows = WorkflowRepository(database)
+    catalog = TestCatalog.load_default()
+    jenkins = MockJenkinsService()
+
+    try:
+        provider = OpenAIProvider(settings, timeout_seconds=settings.llm_timeout_seconds)
+        embedder = OpenAIEmbeddingProvider(
+            settings, timeout_seconds=settings.llm_timeout_seconds
+        )
+        configured = True
+    except ProviderNotConfiguredError:
+        provider = NullProvider()
+        embedder = NullEmbeddingProvider()
+        configured = False
+
+    store = ChromaVectorStore(settings.chroma_persist_directory)
+
+    dependencies = WorkflowDependencies(
+        intent_agent=IntentAgent(
+            provider,
+            confidence_threshold=settings.intent_confidence_threshold,
+            repository=workflows,
+        ),
+        retrieval_agent=RetrievalAgent(store, embedder, catalog, repository=workflows),
+        planning_service=PlanningService(
+            catalog, repository=workflows, plan_repository=PlanRepository(database)
+        ),
+        execution_agent=ExecutionAgent(
+            jenkins, ExecutionRepository(database), repository=workflows
+        ),
+        workflows=workflows,
+        events=EventRepository(database),
+        analysis=AnalysisRepository(database),
+        analyzer=(
+            ResultAnalyzer(
+                provider,
+                provider_model=settings.openai_model,
+                repository=workflows,
+            )
+            if configured
+            else None
+        ),
+    )
+    return dependencies, store, jenkins
+
+
+def build() -> FastAPI:
+    """Entry point for `uvicorn app.api.main:build --factory`."""
+    return create_app()

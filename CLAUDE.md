@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project state
 
-Documentation and architecture are complete. **Modules 1–7 are done (39 of 59 stories).** Suite is green: 290 tests.
+Documentation and architecture are complete. **Modules 1–8 are done (44 of 59 stories).** Suite is green: 317 tests.
 
 - **Module 1 — Foundation:** domain models in `app/models/`, `TestCatalog`, `AppSettings`, the 7-table SQLite schema, five repositories in `app/db/repositories.py`. Seed data is `data/test_cases.json` (12 tests) plus `knowledge_base/` (24 documents).
 - **Module 2 — Retrieval:** `app/knowledge/` (documents, loader, ingest), `app/retrieval/store.py` (`ChromaVectorStore`), `app/agents/retrieval.py`, `scripts/ingest_knowledge_base.py`.
@@ -13,8 +13,16 @@ Documentation and architecture are complete. **Modules 1–7 are done (39 of 59 
 - **Module 5 — Mock Execution:** `app/integrations/mock_jenkins.py` (seeded job simulator) and `app/agents/execution.py`.
 - **Module 6 — Orchestration:** `app/orchestration/` — `state.py`, `nodes.py`, `graph.py` (LangGraph), `runner.py`, `dependencies.py`.
 - **Module 7 — Result Analysis:** `app/agents/analysis.py` (`ResultAnalyzer`, `fallback_report`) plus the versioned analysis prompt and schema in `app/llm/prompts.py`.
+- **Module 8 — API:** `app/api/` — `main.py` (composition), `routes.py`, `service.py` (view assembly), `schemas.py`, `errors.py`. Plus `scripts/client.py` and `docs/api-examples.md`.
 
-`WorkflowRunner.run(query, dry_run=...)` executes the whole workflow end to end. Next is Module 8 (API and Client Interface), then 9 (chat UI), 10 (Docker), 11 (quality). See `docs/module-map.md`.
+The product is usable end to end over HTTP:
+
+```bash
+uv run uvicorn app.api.main:build --factory --reload
+uv run python scripts/client.py run "Run payment smoke tests on Chrome in US"
+```
+
+Next is Module 9 (local chat UI), then 10 (Docker), 11 (quality). See `docs/module-map.md`.
 
 Note: `README.md` still says implementation has not started. It needs a refresh once more of the stack lands.
 
@@ -94,6 +102,9 @@ These are the point of the project — violating them defeats it:
 - `WorkflowDependencies` is the only composition point; the graph constructs no collaborators, which is what lets tests fake every boundary. New collaborators go there, not into a node.
 - The analyzer's grounding checks run **after** the model replies, in `_to_report`: a cited source ID must have been supplied, and a failure claim must name a test that actually ran and actually failed. The schema constrains shape; only this confirms attribution. Any violation discards the whole report for `fallback_report`, so an ungrounded claim never reaches a user.
 - When composing `ResultAnalyzer` into the graph, pass `repository=` but not `reports=` — the analysis node is the single place a report is persisted.
+- Routes hold no workflow logic: they validate, call `WorkflowRunner`, and map outcomes to HTTP. `app/api/service.py` assembles views by reading persisted records — never by re-deriving a decision. `create_app(settings, dependencies=...)` is the seam that lets tests drive the whole HTTP surface offline.
+- A workflow that ends `REJECTED`/`NEEDS_CLARIFICATION`/`RETRIEVAL_FAILED`/`EXECUTION_FAILED` returns 4xx/5xx **and stays retrievable** via `GET /workflows/{id}`; the error envelope always carries `workflow_id`. Never let an error response omit it.
+- A missing `OPENAI_API_KEY` does not stop startup: `NullProvider`/`NullEmbeddingProvider` raise the same typed errors an outage would, so every caller already degrades correctly.
 - Repositories return Pydantic models, not `sqlite3.Row`. Payload dicts are JSON columns; timestamps are UTC ISO strings on disk, `datetime` in models.
 - Loaders are classmethod constructors (`TestCatalog.load`, `.load_default`) and validate invariants eagerly (duplicate IDs raise at construction).
 - Keyword-only arguments for multi-parameter filters/writers (`catalog.filter(*, module, scope, browser, region)`).

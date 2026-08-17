@@ -24,6 +24,15 @@ class EmbeddingProvider(ABC):
         """Return one vector per input text, in the same order."""
 
 
+class NullEmbeddingProvider(EmbeddingProvider):
+    """Stands in when no API key is configured, failing the same way an outage does."""
+
+    def embed(self, texts: Sequence[str]) -> List[List[float]]:
+        raise ProviderNotConfiguredError(
+            "OPENAI_API_KEY is not set; embedding features are disabled"
+        )
+
+
 class OpenAIEmbeddingProvider(EmbeddingProvider):
     """Embeds text with the configured OpenAI embedding model."""
 

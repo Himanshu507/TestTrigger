@@ -13,6 +13,7 @@ SCHEMA_STATEMENTS: Tuple[str, ...] = (
         query TEXT NOT NULL,
         status TEXT NOT NULL,
         dry_run INTEGER NOT NULL,
+        idempotency_key TEXT UNIQUE,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
     )
