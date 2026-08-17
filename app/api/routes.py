@@ -18,7 +18,7 @@ from app.api.schemas import (
     HealthResponse,
     WorkflowDetailResponse,
 )
-from app.api.service import WorkflowInspector, check_dependencies
+from app.api.service import WorkflowInspector, check_dependencies, check_features
 from app.models.execution import InvalidJobTransitionError
 from app.orchestration.runner import WorkflowRunner
 
@@ -179,7 +179,9 @@ def health(request: Request, response: Response) -> HealthResponse:
     if not ready:
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
     return HealthResponse(
-        status="ready" if ready else "degraded", dependencies=dependencies
+        status="ready" if ready else "degraded",
+        dependencies=dependencies,
+        features=check_features(request.app.state.settings),
     )
 
 

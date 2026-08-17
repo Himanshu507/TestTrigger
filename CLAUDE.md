@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project state
 
-Documentation and architecture are complete. **Modules 1–9 are done (49 of 59 stories).** Suite is green: 337 tests.
+Documentation and architecture are complete. **Modules 1–10 are done (53 of 59 stories).** Suite is green: 361 tests.
 
 - **Module 1 — Foundation:** domain models in `app/models/`, `TestCatalog`, `AppSettings`, the 7-table SQLite schema, five repositories in `app/db/repositories.py`. Seed data is `data/test_cases.json` (12 tests) plus `knowledge_base/` (24 documents).
 - **Module 2 — Retrieval:** `app/knowledge/` (documents, loader, ingest), `app/retrieval/store.py` (`ChromaVectorStore`), `app/agents/retrieval.py`, `scripts/ingest_knowledge_base.py`.
@@ -17,14 +17,16 @@ Documentation and architecture are complete. **Modules 1–9 are done (49 of 59 
 
 - **Module 9 — Local Chat UI:** `frontend/` — plain `index.html` + `styles.css` + `app.js`, no build step and no npm. Mounted by FastAPI at `/ui`.
 
-The product is usable end to end:
+- **Module 10 — Container Runtime:** `Dockerfile`, `frontend/Dockerfile`, `docker-compose.yml`, `docker/backend-entrypoint.sh`, `.env.example`, `.dockerignore`.
+
+The product runs two ways:
 
 ```bash
+docker compose up --build                              # UI :5173, API :8000
 uv run uvicorn app.api.main:build --factory --reload   # UI at /, API at /api/v1
-uv run python scripts/client.py run "Run payment smoke tests on Chrome in US"
 ```
 
-Next is Module 10 (Docker runtime), then 11 (quality). See `docs/module-map.md`.
+Only Module 11 (Quality and Operations, 6 stories) remains. See `docs/module-map.md`.
 
 Note: `README.md` still says implementation has not started. It needs a refresh once more of the stack lands.
 
@@ -110,6 +112,8 @@ These are the point of the project — violating them defeats it:
 - `frontend/` is deliberately buildless — no npm, no bundler, no framework. Keep it that way unless there's a concrete need; the Docker step and the review both stay trivial as a result.
 - `app.js` is presentation only. It must never parse intent, pick tests, evaluate policy, poll a job, or call a provider — it renders whatever the API returned. It also keeps observed results (`.result`) visually distinct from inference (`.inference`, labelled "Inferred — not confirmed"), which is the same observed-vs-inferred split the analyzer enforces.
 - Frontend tests (`tests/frontend/`) run real Chromium via Playwright with every API response mocked at the network layer, so they need no backend and no OpenAI call. The page is served over HTTP by a fixture — a `file://` origin cannot resolve the relative `/api/v1` fetch.
+- `sqlite:///path` is **relative**; an absolute path needs `sqlite:////path`. Getting this wrong in a container silently writes the database into the container layer instead of the volume, and it is lost on `down`. `test_persistent_paths_resolve_inside_the_mounted_volume` guards it.
+- The frontend container receives exactly one variable, `API_BASE_URL`, written to `config.js` at start. Anything added to that service is served to the browser, so a credential must never go there. Several tests assert this.
 - Repositories return Pydantic models, not `sqlite3.Row`. Payload dicts are JSON columns; timestamps are UTC ISO strings on disk, `datetime` in models.
 - Loaders are classmethod constructors (`TestCatalog.load`, `.load_default`) and validate invariants eagerly (duplicate IDs raise at construction).
 - Keyword-only arguments for multi-parameter filters/writers (`catalog.filter(*, module, scope, browser, region)`).

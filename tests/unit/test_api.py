@@ -342,11 +342,38 @@ def test_health_reports_dependency_readiness(client) -> None:
 
 
 def test_health_never_exposes_connection_details(client) -> None:
+    """Naming the variable is fine and useful; revealing its value is not."""
     text = client.get("/health").text
 
     assert "sqlite:///" not in text
     assert "/chroma" not in text
-    assert "api_key" not in text.lower()
+    assert "sk-" not in text
+    assert "test-key" not in text
+
+
+def test_health_reports_feature_status_when_no_key_is_configured(client) -> None:
+    features = {
+        feature["name"]: feature for feature in client.get("/health").json()["features"]
+    }
+
+    assert set(features) == {
+        "intent_extraction",
+        "semantic_retrieval",
+        "ai_result_analysis",
+    }
+    assert all(feature["enabled"] is False for feature in features.values())
+    assert "deterministic summary" in features["ai_result_analysis"]["detail"]
+
+
+def test_health_reports_features_as_enabled_once_a_key_is_present(tmp_path) -> None:
+    from app.api.service import check_features
+
+    configured = AppSettings.from_environment({"OPENAI_API_KEY": "test-key"})
+
+    features = check_features(configured)
+
+    assert all(feature.enabled for feature in features)
+    assert all(feature.detail is None for feature in features)
 
 
 def test_health_reports_degraded_when_a_dependency_fails(client) -> None:

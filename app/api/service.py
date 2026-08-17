@@ -10,6 +10,7 @@ from app.api.schemas import (
     AnalysisView,
     DependencyHealth,
     EventView,
+    FeatureStatus,
     ExecutionView,
     IntentView,
     PlanTestView,
@@ -160,6 +161,37 @@ def _to_event_view(event: WorkflowEvent) -> EventView:
         occurred_at=event.occurred_at,
         metadata=event.metadata,
     )
+
+
+DISABLED_WITHOUT_KEY = "OPENAI_API_KEY is not configured"
+
+
+def check_features(settings) -> List[FeatureStatus]:
+    """Report optional capability status without revealing any configuration value.
+
+    A missing key is a documented, degraded mode rather than a fault: intent
+    parsing asks for clarification and analysis falls back to observed facts.
+    """
+    enabled = settings.llm_enabled
+    return [
+        FeatureStatus(
+            name="intent_extraction",
+            enabled=enabled,
+            detail=None if enabled else DISABLED_WITHOUT_KEY,
+        ),
+        FeatureStatus(
+            name="semantic_retrieval",
+            enabled=enabled,
+            detail=None if enabled else DISABLED_WITHOUT_KEY,
+        ),
+        FeatureStatus(
+            name="ai_result_analysis",
+            enabled=enabled,
+            detail=None
+            if enabled
+            else f"{DISABLED_WITHOUT_KEY}; a deterministic summary is used instead",
+        ),
+    ]
 
 
 def check_dependencies(

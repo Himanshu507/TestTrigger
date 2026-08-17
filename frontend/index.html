@@ -60,6 +60,12 @@
       Runs locally against your own backend. Model calls stay on the server.
     </footer>
 
+    <!--
+      config.js is written by the container entrypoint and sets the local API
+      base URL. It is optional: served from the backend itself, same-origin
+      relative requests already work. It carries no credential.
+    -->
+    <script src="./config.js" onerror="void 0"></script>
     <script src="./app.js"></script>
   </body>
 </html>

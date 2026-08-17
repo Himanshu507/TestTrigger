@@ -3,7 +3,31 @@
 Copyable requests for every documented scenario. The contract itself lives in
 [api-contract.md](api-contract.md); this page is the runnable version of it.
 
-## Run the backend
+## Run with Docker (one command)
+
+```bash
+cp .env.example .env      # set OPENAI_API_KEY
+docker compose up --build
+```
+
+| Address | What |
+| --- | --- |
+| http://localhost:5173 | Chat UI (frontend container) |
+| http://localhost:8000 | API (backend container) |
+| http://localhost:8000/docs | Interactive OpenAPI |
+
+Both services bind to `127.0.0.1` only. The backend initializes SQLite and
+ingests the knowledge base on first start, then skips ingestion on later
+starts. Demo state lives on the `test-trigger-data` volume and survives a
+restart.
+
+Reset everything, including the volume:
+
+```bash
+docker compose down -v
+```
+
+## Run from source instead
 
 ```bash
 uv sync --extra dev

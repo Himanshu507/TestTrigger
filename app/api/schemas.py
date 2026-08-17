@@ -113,8 +113,21 @@ class DependencyHealth(BaseModel):
     detail: Optional[str] = None
 
 
+class FeatureStatus(BaseModel):
+    """Which optional capabilities are configured.
+
+    Reports whether a feature is on and why it is not, never the configuration
+    value behind it.
+    """
+
+    name: str
+    enabled: bool
+    detail: Optional[str] = None
+
+
 class HealthResponse(BaseModel):
     """Liveness is the response itself; readiness is per dependency."""
 
     status: str
     dependencies: List[DependencyHealth] = Field(default_factory=list)
+    features: List[FeatureStatus] = Field(default_factory=list)
