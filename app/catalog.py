@@ -32,6 +32,9 @@ class TestCatalog:
     def get(self, test_id: str) -> TestCase | None:
         return self._by_id.get(test_id)
 
+    def all(self) -> list[TestCase]:
+        return list(self._test_cases)
+
     def filter(
         self,
         *,

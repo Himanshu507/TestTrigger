@@ -20,6 +20,9 @@ dev = [
 testpaths = ["tests"]
 pythonpath = ["."]
 addopts = "-ra"
+# The domain owns names like TestCase, TestIntent, and TestCatalog. Tests are
+# plain functions, so class collection is disabled rather than renaming them.
+python_classes = []
 
 [tool.setuptools.packages.find]
 include = ["app*"]

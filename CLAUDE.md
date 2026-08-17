@@ -4,17 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project state
 
-Documentation and architecture are complete. Module 1 (Foundation and Data) is mostly built; Modules 2–11 have no code. Suite is green: 27 tests.
+Documentation and architecture are complete. **Module 1 (Foundation and Data) is done — all 6 stories.** Modules 2–11 have no code. Suite is green: 65 tests.
 
-Built: `app/models/test_case.py`, `app/models/workflow.py`, `app/catalog.py`, `app/config.py`, `app/db/` (schema, `Database`, `WorkflowRepository`).
+Next up is Module 2 (Knowledge Base and Retrieval) or Module 3 (Intent Understanding) — either order, both depend only on Module 1. See `docs/module-map.md`.
 
-Remaining in Module 1:
-
-- **FND-1** — `TestIntent`, `ExecutionPlan`, `PlanItem`, `ExecutionResult`, `AnalysisReport`, `RetrievedEvidence` models
-- **FND-4** — repositories for `test_plans`, `executions`, `test_results`, `analysis_reports`, `workflow_events` (tables exist; only `WorkflowRepository` is implemented)
-- **FND-5** — `knowledge_base/` history and jurisdiction fixtures (catalog seed is done: 12 tests)
-
-Finish those before starting Module 2 or 3 — everything downstream depends on Module 1's contracts.
+Module 1 delivered: domain models in `app/models/`, `TestCatalog`, `AppSettings`, the 7-table SQLite schema, and five repositories in `app/db/repositories.py` (`Workflow`, `Plan`, `Execution`, `Analysis`, `Event`). Seed data is `data/test_cases.json` (12 tests) plus `knowledge_base/` (test docs, historical failures, jurisdiction rules).
 
 The repo uses TDD: tests are often written before the code exists. A failing import in `tests/` is a specification, not breakage. Never delete or skip one to get green.
 
@@ -83,7 +77,8 @@ These are the point of the project — violating them defeats it:
 - Loaders are classmethod constructors (`TestCatalog.load`, `.load_default`) and validate invariants eagerly (duplicate IDs raise at construction).
 - Keyword-only arguments for multi-parameter filters/writers (`catalog.filter(*, module, scope, browser, region)`).
 - Test names are full sentences describing behavior, not `test_filter`.
-- `TestCatalog`/`TestCase` trigger a `PytestCollectionWarning` because pytest tries to collect `Test*` classes. Harmless; do not rename the domain classes to silence it.
+- Models enforce their own invariants with `@model_validator`, so an illegal object cannot exist: a failed `ExecutionResult` must state a reason, a `PlanItem` must give reasons, a passing `PolicyResult` cannot list violations, a fallback `AnalysisReport` cannot infer causes. Add invariants there rather than re-checking in callers.
+- `python_classes = []` in `pyproject.toml` disables pytest class collection, because the domain owns `TestCase`, `TestIntent`, `TestCatalog`, and `TestOutcome`. Write tests as plain functions; do not rename domain classes.
 
 ## Git
 

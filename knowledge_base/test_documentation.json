@@ -1,0 +1,74 @@
+[
+  {
+    "source_id": "DOC-PAY-001",
+    "type": "test_documentation",
+    "content": "PAY-001 Card Authorization verifies that a valid card is authorized end to end: tokenization, gateway authorization, and an approved status written back to the order. It does not cover capture or refund.",
+    "metadata": {"test_id": "PAY-001", "module": "payment", "scope": "smoke"}
+  },
+  {
+    "source_id": "DOC-PAY-002",
+    "type": "test_documentation",
+    "content": "PAY-002 Card Refund verifies a full refund against a previously captured payment, including refund reference creation and the resulting balance adjustment.",
+    "metadata": {"test_id": "PAY-002", "module": "payment", "scope": "regression"}
+  },
+  {
+    "source_id": "DOC-PAY-003",
+    "type": "test_documentation",
+    "content": "PAY-003 3DS Challenge verifies a payment that requires a 3DS redirect. The test waits for the issuer callback and is sensitive to gateway and callback latency; it is the most timing-dependent payment test.",
+    "metadata": {"test_id": "PAY-003", "module": "payment", "scope": "smoke"}
+  },
+  {
+    "source_id": "DOC-WAL-001",
+    "type": "test_documentation",
+    "content": "WAL-001 Wallet Top Up verifies adding funds to a wallet and the resulting balance and ledger entry.",
+    "metadata": {"test_id": "WAL-001", "module": "wallet", "scope": "smoke"}
+  },
+  {
+    "source_id": "DOC-WAL-002",
+    "type": "test_documentation",
+    "content": "WAL-002 Wallet Transaction History verifies paginated rendering of wallet transactions, including ordering and cursor handling.",
+    "metadata": {"test_id": "WAL-002", "module": "wallet", "scope": "regression"}
+  },
+  {
+    "source_id": "DOC-CHK-001",
+    "type": "test_documentation",
+    "content": "CHK-001 Guest Checkout verifies a complete purchase without an authenticated account, covering address entry, totals, and order confirmation.",
+    "metadata": {"test_id": "CHK-001", "module": "checkout", "scope": "smoke"}
+  },
+  {
+    "source_id": "DOC-CHK-002",
+    "type": "test_documentation",
+    "content": "CHK-002 Promotion Code verifies that a promotion code applies at checkout and adjusts the order total. It is sensitive to discount and rounding configuration.",
+    "metadata": {"test_id": "CHK-002", "module": "checkout", "scope": "regression"}
+  },
+  {
+    "source_id": "DOC-LOG-001",
+    "type": "test_documentation",
+    "content": "LOG-001 Password Login verifies credential submission, session establishment, and redirect to the authenticated landing page.",
+    "metadata": {"test_id": "LOG-001", "module": "login", "scope": "smoke"}
+  },
+  {
+    "source_id": "DOC-LOG-002",
+    "type": "test_documentation",
+    "content": "LOG-002 Password Reset verifies the full reset workflow: reset request, token delivery, password change, and login with the new password.",
+    "metadata": {"test_id": "LOG-002", "module": "login", "scope": "regression"}
+  },
+  {
+    "source_id": "DOC-WDR-001",
+    "type": "test_documentation",
+    "content": "WDR-001 Bank Withdrawal verifies a standard bank withdrawal request, including balance checks and jurisdiction validation before submission.",
+    "metadata": {"test_id": "WDR-001", "module": "withdrawal", "scope": "smoke"}
+  },
+  {
+    "source_id": "DOC-WDR-002",
+    "type": "test_documentation",
+    "content": "WDR-002 Withdrawal Limit verifies that a withdrawal above the configured regional limit is rejected with an explanatory message.",
+    "metadata": {"test_id": "WDR-002", "module": "withdrawal", "scope": "regression"}
+  },
+  {
+    "source_id": "DOC-WDR-003",
+    "type": "test_documentation",
+    "content": "WDR-003 Withdrawal Cancellation verifies that a pending withdrawal can be cancelled and that the funds are returned to the available balance.",
+    "metadata": {"test_id": "WDR-003", "module": "withdrawal", "scope": "regression"}
+  }
+]
