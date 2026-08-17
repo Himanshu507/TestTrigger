@@ -90,6 +90,10 @@ class WorkflowRepository:
             ).fetchone()
         return _to_workflow(row) if row is not None else None
 
+    def count_workflows(self) -> int:
+        with self._database.connect() as connection:
+            return connection.execute("SELECT COUNT(*) FROM workflows").fetchone()[0]
+
     def update_status(self, workflow_id: str, status: WorkflowStatus) -> Workflow:
         """Apply a status change permitted by the documented transition table."""
         workflow = self.get_workflow(workflow_id)
