@@ -27,6 +27,40 @@ class ExecutionStatus(str, Enum):
         }
 
 
+# Legal job lifecycle moves. A terminal job has no outgoing transition, so a
+# completed or cancelled job cannot accidentally restart.
+ALLOWED_JOB_TRANSITIONS = {
+    ExecutionStatus.QUEUED: frozenset(
+        {
+            ExecutionStatus.RUNNING,
+            ExecutionStatus.FAILED,
+            ExecutionStatus.CANCELLED,
+        }
+    ),
+    ExecutionStatus.RUNNING: frozenset(
+        {
+            ExecutionStatus.COMPLETED,
+            ExecutionStatus.FAILED,
+            ExecutionStatus.CANCELLED,
+        }
+    ),
+}
+
+
+def can_transition_job(current: ExecutionStatus, target: ExecutionStatus) -> bool:
+    """Report whether the job lifecycle permits this status change."""
+    return target in ALLOWED_JOB_TRANSITIONS.get(current, frozenset())
+
+
+class InvalidJobTransitionError(ValueError):
+    """Raised when a caller attempts an illegal job status change."""
+
+    def __init__(self, current: ExecutionStatus, target: ExecutionStatus) -> None:
+        super().__init__(f"job cannot move from {current.value} to {target.value}")
+        self.current = current
+        self.target = target
+
+
 class TestOutcome(str, Enum):
     """Outcome of a single simulated test."""
 

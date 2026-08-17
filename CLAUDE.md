@@ -4,14 +4,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project state
 
-Documentation and architecture are complete. **Modules 1–4 are done (23 of 59 stories).** Suite is green: 213 tests.
+Documentation and architecture are complete. **Modules 1–5 are done (28 of 59 stories).** Suite is green: 247 tests.
 
 - **Module 1 — Foundation:** domain models in `app/models/`, `TestCatalog`, `AppSettings`, the 7-table SQLite schema, five repositories in `app/db/repositories.py`. Seed data is `data/test_cases.json` (12 tests) plus `knowledge_base/` (24 documents).
 - **Module 2 — Retrieval:** `app/knowledge/` (documents, loader, ingest), `app/retrieval/store.py` (`ChromaVectorStore`), `app/agents/retrieval.py`, `scripts/ingest_knowledge_base.py`.
 - **Module 3 — Intent:** `app/llm/` (provider interface, `OpenAIProvider`, embeddings, versioned prompts) and `app/agents/intent.py` plus normalization.
 - **Module 4 — Planning and Policy:** `app/services/` — `planner.py`, `policy.py`, `risk.py`, and the `PlanningService` facade both dry runs and real runs go through.
+- **Module 5 — Mock Execution:** `app/integrations/mock_jenkins.py` (seeded job simulator) and `app/agents/execution.py`.
 
-Intent → retrieval → plan → policy runs end to end today. Next is Module 5 (Mock Execution), then Module 6 (Orchestration) wires the graph. See `docs/module-map.md`.
+The whole deterministic path — retrieval → plan → policy → job → persisted results — runs end to end today with no LLM in it. Next is Module 6 (Orchestration), which wires these into the LangGraph. See `docs/module-map.md`.
 
 Note: `README.md` still says implementation has not started. It needs a refresh once more of the stack lands.
 
@@ -85,6 +86,8 @@ These are the point of the project — violating them defeats it:
 - Chroma metadata must be scalar, so list values are stored delimited (`"|payment|checkout|"`) via `flatten_metadata()`; use `list_contains` to test membership, never a substring check.
 - Policy reads **structured metadata only** (`unsupported_browsers`, `applies_to_modules`) — never rule prose. Rule text is for humans; a decision that parsed it would not be deterministic. Violation codes live in `ViolationCode` so clients branch on a constant, not a string match.
 - Anything time-dependent takes an injected `reference_date` rather than reading the clock, so risk scores stay reproducible in tests and audits.
+- Mock Jenkins outcomes derive from `sha256(seed | request fingerprint | test_id)` — never a random source — so a demo and a test replay identically. Two status machines exist and are separate: `WorkflowStatus` (`ALLOWED_TRANSITIONS`) and `ExecutionStatus` (`ALLOWED_JOB_TRANSITIONS`).
+- `ExecutionAgent.execute` refuses any plan where `is_executable` is false; it is the last gate before an external side effect. Retries are keyed by `build_idempotency_key(workflow_id, plan)`, which hashes exactly what would run, so a resubmission returns the original job.
 - Repositories return Pydantic models, not `sqlite3.Row`. Payload dicts are JSON columns; timestamps are UTC ISO strings on disk, `datetime` in models.
 - Loaders are classmethod constructors (`TestCatalog.load`, `.load_default`) and validate invariants eagerly (duplicate IDs raise at construction).
 - Keyword-only arguments for multi-parameter filters/writers (`catalog.filter(*, module, scope, browser, region)`).
