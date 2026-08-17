@@ -4,11 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project state
 
-Documentation and architecture are complete. **Module 1 (Foundation and Data) is done — all 6 stories.** Modules 2–11 have no code. Suite is green: 65 tests.
+Documentation and architecture are complete. **Modules 1 and 3 are done (11 of 59 stories).** Suite is green: 125 tests.
 
-Next up is Module 2 (Knowledge Base and Retrieval) or Module 3 (Intent Understanding) — either order, both depend only on Module 1. See `docs/module-map.md`.
+- **Module 1 — Foundation:** domain models in `app/models/`, `TestCatalog`, `AppSettings`, the 7-table SQLite schema, five repositories in `app/db/repositories.py`. Seed data is `data/test_cases.json` (12 tests) plus `knowledge_base/`.
+- **Module 3 — Intent:** `app/llm/` (provider interface, `OpenAIProvider`, versioned prompts) and `app/agents/` (`IntentAgent`, normalization).
 
-Module 1 delivered: domain models in `app/models/`, `TestCatalog`, `AppSettings`, the 7-table SQLite schema, and five repositories in `app/db/repositories.py` (`Workflow`, `Plan`, `Execution`, `Analysis`, `Event`). Seed data is `data/test_cases.json` (12 tests) plus `knowledge_base/` (test docs, historical failures, jurisdiction rules).
+Next is Module 2 (Knowledge Base and Retrieval), which unblocks Module 4 (Planning and Policy). See `docs/module-map.md` for the dependency order.
 
 The repo uses TDD: tests are often written before the code exists. A failing import in `tests/` is a specification, not breakage. Never delete or skip one to get green.
 
@@ -73,6 +74,8 @@ These are the point of the project — violating them defeats it:
 - Controlled vocabulary lives in `str`-valued enums in `app/models/` (`ModuleName`, `TestScope`, `Browser`, `Region`, `Criticality`, `WorkflowStatus`, `AgentRunStatus`) — reuse them; do not redefine per module. Module 1 owns shared models.
 - Status changes go through `WorkflowRepository.update_status`, which enforces `ALLOWED_TRANSITIONS` in `app/models/workflow.py`. Never write a status column directly, and never add a transition that isn't in `docs/workflow.md`.
 - `Database.connect()` is a context manager that enables `PRAGMA foreign_keys`, commits on success, rolls back on exception. All persistence goes through it.
+- Agents depend on the `LLMProvider` ABC, never on the `openai` SDK — tests use a fake provider. Provider failures are the typed errors in `app/llm/errors.py`; an agent turns them into an explicit outcome (e.g. `ClarificationRequired`) and never a guessed value.
+- Provider schemas are built from the enums (`build_intent_schema`), so the prompt contract cannot drift from the vocabulary validators accept. Output is validated twice: schema, then `app/agents/normalization.py`, which returns `None` for unknown values rather than snapping to a near match.
 - Repositories return Pydantic models, not `sqlite3.Row`. Payload dicts are JSON columns; timestamps are UTC ISO strings on disk, `datetime` in models.
 - Loaders are classmethod constructors (`TestCatalog.load`, `.load_default`) and validate invariants eagerly (duplicate IDs raise at construction).
 - Keyword-only arguments for multi-parameter filters/writers (`catalog.filter(*, module, scope, browser, region)`).

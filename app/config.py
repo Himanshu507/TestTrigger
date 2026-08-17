@@ -3,7 +3,7 @@
 import os
 from typing import Mapping, Optional
 
-from pydantic import BaseModel, ConfigDict, SecretStr
+from pydantic import BaseModel, ConfigDict, Field, SecretStr
 
 SQLITE_URL_PREFIX = "sqlite:///"
 
@@ -12,6 +12,8 @@ DEFAULT_OPENAI_EMBEDDING_MODEL = "text-embedding-3-small"
 DEFAULT_DATABASE_PATH = "local_data/test-trigger.db"
 DEFAULT_CHROMA_PERSIST_DIRECTORY = "local_data/chroma"
 DEFAULT_FRONTEND_ORIGIN = "http://localhost:5173"
+DEFAULT_INTENT_CONFIDENCE_THRESHOLD = 0.5
+DEFAULT_LLM_TIMEOUT_SECONDS = 30.0
 
 
 class AppSettings(BaseModel):
@@ -29,6 +31,10 @@ class AppSettings(BaseModel):
     database_path: str = DEFAULT_DATABASE_PATH
     chroma_persist_directory: str = DEFAULT_CHROMA_PERSIST_DIRECTORY
     frontend_origin: str = DEFAULT_FRONTEND_ORIGIN
+    intent_confidence_threshold: float = Field(
+        default=DEFAULT_INTENT_CONFIDENCE_THRESHOLD, ge=0.0, le=1.0
+    )
+    llm_timeout_seconds: float = Field(default=DEFAULT_LLM_TIMEOUT_SECONDS, gt=0.0)
 
     @property
     def llm_enabled(self) -> bool:
@@ -67,6 +73,12 @@ class AppSettings(BaseModel):
             frontend_origin=(
                 _read(source, "FRONTEND_ORIGIN") or DEFAULT_FRONTEND_ORIGIN
             ),
+            intent_confidence_threshold=_read_float(
+                source, "INTENT_CONFIDENCE_THRESHOLD", DEFAULT_INTENT_CONFIDENCE_THRESHOLD
+            ),
+            llm_timeout_seconds=_read_float(
+                source, "LLM_TIMEOUT_SECONDS", DEFAULT_LLM_TIMEOUT_SECONDS
+            ),
         )
 
 
@@ -77,6 +89,17 @@ def _read(source: Mapping[str, str], key: str) -> Optional[str]:
         return None
     trimmed = value.strip()
     return trimmed or None
+
+
+def _read_float(source: Mapping[str, str], key: str, default: float) -> float:
+    """Read a numeric setting, failing loudly rather than silently defaulting."""
+    value = _read(source, key)
+    if value is None:
+        return default
+    try:
+        return float(value)
+    except ValueError as error:
+        raise ValueError(f"{key} must be a number, got {value!r}") from error
 
 
 def _database_path(database_url: str) -> str:

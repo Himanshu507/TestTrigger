@@ -40,6 +40,25 @@ def test_absolute_sqlite_url_keeps_its_leading_slash() -> None:
     assert settings.database_path == "/var/data/test-trigger.db"
 
 
+def test_confidence_threshold_and_timeout_are_configurable() -> None:
+    settings = AppSettings.from_environment(
+        {"INTENT_CONFIDENCE_THRESHOLD": "0.85", "LLM_TIMEOUT_SECONDS": "12"}
+    )
+
+    assert settings.intent_confidence_threshold == 0.85
+    assert settings.llm_timeout_seconds == 12.0
+
+
+def test_unparseable_numeric_setting_fails_loudly() -> None:
+    with pytest.raises(ValueError, match="INTENT_CONFIDENCE_THRESHOLD"):
+        AppSettings.from_environment({"INTENT_CONFIDENCE_THRESHOLD": "high"})
+
+
+def test_confidence_threshold_must_be_a_probability() -> None:
+    with pytest.raises(ValueError):
+        AppSettings.from_environment({"INTENT_CONFIDENCE_THRESHOLD": "1.5"})
+
+
 def test_non_sqlite_database_url_is_rejected() -> None:
     with pytest.raises(ValueError, match="sqlite"):
         AppSettings.from_environment(
