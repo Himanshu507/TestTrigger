@@ -436,6 +436,75 @@ def test_the_timeline_is_available_for_inspection(database, store, catalog) -> N
     assert all(event.occurred_at for event in timeline)
 
 
+def test_the_real_analyzer_produces_a_grounded_report_in_the_graph(
+    database, store, catalog
+) -> None:
+    """The concrete Module 7 analyzer satisfies the graph's analyzer protocol."""
+    from app.agents.analysis import ResultAnalyzer
+
+    workflows = WorkflowRepository(database)
+    analyzer = ResultAnalyzer(
+        FakeProvider(
+            {
+                "summary": "Execution finished.",
+                "observations": ["all tests reported"],
+                "insufficient_evidence": False,
+                "failures": [],
+            }
+        ),
+        provider_model="gpt-test",
+        repository=workflows,
+    )
+    runner = _runner(
+        database, store, catalog, intent_payload=_intent_payload(), analyzer=analyzer
+    )
+
+    state = runner.run(QUERY)
+
+    assert state["status"] == WorkflowStatus.COMPLETED.value
+    assert state["analysis"]["status"] == "ai_generated"
+    assert state["analysis"]["provider_model"] == "gpt-test"
+    assert AnalysisRepository(database).get_report(state["workflow_id"]).summary == (
+        "Execution finished."
+    )
+
+
+def test_an_ungrounded_analysis_claim_degrades_the_graph_to_fallback(
+    database, store, catalog
+) -> None:
+    from app.agents.analysis import ResultAnalyzer
+
+    analyzer = ResultAnalyzer(
+        FakeProvider(
+            {
+                "summary": "Something failed.",
+                "observations": [],
+                "insufficient_evidence": False,
+                "failures": [
+                    {
+                        "test_id": "ZZZ-999",
+                        "observed_facts": ["invented"],
+                        "likely_cause": "invented",
+                        "confidence": 0.9,
+                        "evidence_source_ids": ["HIST-001"],
+                        "recommendations": [],
+                    }
+                ],
+            }
+        )
+    )
+    runner = _runner(
+        database, store, catalog, intent_payload=_intent_payload(), analyzer=analyzer
+    )
+
+    state = runner.run(QUERY)
+
+    assert state["status"] == WorkflowStatus.COMPLETED.value
+    assert state["analysis"]["status"] == "fallback"
+    assert "not part of this execution" in state["analysis"]["fallback_reason"]
+    assert len(state["execution_results"]) == 2
+
+
 def test_a_terminal_workflow_status_is_not_reopened(database, store, catalog) -> None:
     runner = _runner(database, store, catalog, intent_payload=_intent_payload())
 

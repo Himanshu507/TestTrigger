@@ -73,6 +73,98 @@ def build_intent_schema() -> Dict[str, Any]:
     }
 
 
+ANALYSIS_PROMPT_VERSION = "analysis-v1"
+ANALYSIS_SCHEMA_NAME = "analysis_report"
+
+ANALYSIS_SYSTEM_PROMPT = """\
+You explain test execution results using only the material provided.
+
+Separate what was observed from what you infer. observed_facts must restate
+only what the current execution reported. likely_cause is a hypothesis, so
+phrase it as consistent-with rather than as established fact, and lower
+confidence when the evidence is thin.
+
+Cite evidence by source ID. Every failure entry must reference at least one
+supplied source ID, and you may not cite an ID that was not provided. If the
+evidence does not support a cause, say so plainly, set insufficient_evidence
+to true, and keep confidence low.
+
+Analyze only the tests present in the results. Never introduce a test ID that
+is not listed, never invent a source, and never recommend running something
+the request did not already permit.
+"""
+
+
+def build_analysis_schema() -> Dict[str, Any]:
+    """Schema forcing observed facts, inference, evidence, and uncertainty apart."""
+    return {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "summary": {"type": "string"},
+            "observations": {"type": "array", "items": {"type": "string"}},
+            "insufficient_evidence": {"type": "boolean"},
+            "failures": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "properties": {
+                        "test_id": {"type": "string"},
+                        "observed_facts": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                        },
+                        "likely_cause": {"type": "string"},
+                        "confidence": {
+                            "type": "number",
+                            "minimum": 0.0,
+                            "maximum": 1.0,
+                        },
+                        "evidence_source_ids": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                        },
+                        "recommendations": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                        },
+                    },
+                    "required": [
+                        "test_id",
+                        "observed_facts",
+                        "likely_cause",
+                        "confidence",
+                        "evidence_source_ids",
+                        "recommendations",
+                    ],
+                },
+            },
+        },
+        "required": ["summary", "observations", "insufficient_evidence", "failures"],
+    }
+
+
+def build_analysis_user_prompt(
+    *,
+    context_lines: List[str],
+    result_lines: List[str],
+    evidence_lines: List[str],
+) -> str:
+    """Render the bounded analysis context the agent assembled."""
+    sections = [
+        "Execution context:",
+        *context_lines,
+        "",
+        "Results:",
+        *result_lines,
+        "",
+        "Retrieved evidence (cite these source IDs):",
+        *(evidence_lines or ["- none retrieved"]),
+    ]
+    return "\n".join(sections)
+
+
 def build_intent_user_prompt(query: str, *, vocabulary_note: Optional[str] = None) -> str:
     lines = [
         "Extract the testing intent from this request.",

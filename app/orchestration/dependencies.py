@@ -25,10 +25,14 @@ from app.services.planning_service import PlanningService
 
 
 class ResultAnalyzer(Protocol):
-    """Produces a grounded report. Implemented by Module 7.
+    """Produces a grounded report. Satisfied by `app.agents.analysis.ResultAnalyzer`.
 
-    Until that module lands, the graph falls back to a deterministic summary,
+    With no analyzer configured the graph falls back to a deterministic summary,
     which is the same path an analysis outage takes.
+
+    Composition rule: build the concrete analyzer with `repository=` for its
+    agent-run audit but *without* `reports=`. The analysis node is the single
+    place a report is persisted, so passing both would write it twice.
     """
 
     def analyze(

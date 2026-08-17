@@ -20,9 +20,14 @@ class AnalysisStatus(str, Enum):
 
 
 class FailureAnalysis(BaseModel):
-    """An inferred cause for one failed test, tied to the evidence behind it."""
+    """An inferred cause for one failed test, tied to the evidence behind it.
+
+    `observed_facts` and `likely_cause` are deliberately separate fields: what
+    the execution reported is not the same kind of claim as what it suggests.
+    """
 
     test_id: str = Field(pattern=TEST_ID_PATTERN)
+    observed_facts: List[str] = Field(default_factory=list)
     likely_cause: str = Field(min_length=1)
     confidence: float = Field(ge=0.0, le=1.0)
     evidence_source_ids: List[str] = Field(min_length=1)
@@ -43,6 +48,9 @@ class AnalysisReport(BaseModel):
     failures: List[FailureAnalysis] = Field(default_factory=list)
     insufficient_evidence: bool = False
     fallback_reason: Optional[str] = None
+    # Provider metadata for inspection. Never holds a key or any credential.
+    prompt_version: Optional[str] = None
+    provider_model: Optional[str] = None
 
     @model_validator(mode="after")
     def fallback_reports_must_not_infer_causes(self) -> "AnalysisReport":

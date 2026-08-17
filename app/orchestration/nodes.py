@@ -6,11 +6,12 @@ subset. Nodes never call one another; routing is the graph's job.
 
 from typing import Any, Dict, List
 
+from app.agents.analysis import fallback_report
 from app.agents.execution import ExecutionError, ExecutionRefusedError
 from app.agents.intent import ClarificationRequired
 from app.agents.retrieval import RetrievalError
 from app.models.evidence import RetrievedEvidence
-from app.models.execution import ExecutionResult, ExecutionStatus, TestOutcome
+from app.models.execution import ExecutionResult, ExecutionStatus
 from app.models.intent import TestIntent
 from app.models.plan import ExecutionPlan
 from app.models.workflow import WorkflowStatus
@@ -292,7 +293,7 @@ def analysis_node(
             fallback_reason = f"analysis failed: {error}"
 
     if report is None:
-        report = _fallback_report(results, fallback_reason)
+        report = fallback_report(results, fallback_reason)
         status = WorkflowStatus.FALLBACK_SUMMARY
     else:
         status = WorkflowStatus.ANALYZED
@@ -337,24 +338,3 @@ def _evidence(state: TestWorkflowState) -> List[RetrievedEvidence]:
     ]
 
 
-def _fallback_report(results, reason: str):
-    """Deterministic summary used when grounded analysis is unavailable."""
-    from app.models.analysis import AnalysisReport, AnalysisStatus
-
-    failed = [result for result in results if result.status is TestOutcome.FAILED]
-    summary = f"{len(failed)} of {len(results)} test(s) failed."
-
-    observations = [
-        (
-            f"{result.test_id} {result.status.value} in {result.duration_ms}ms"
-            + (f": {result.failure_reason}" if result.failure_reason else "")
-        )
-        for result in results
-    ]
-
-    return AnalysisReport(
-        summary=summary,
-        status=AnalysisStatus.FALLBACK,
-        observations=observations,
-        fallback_reason=reason,
-    )
