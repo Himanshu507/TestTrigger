@@ -5,24 +5,14 @@ references an unknown test ID would let an agent cite something the catalog
 cannot execute.
 """
 
-import json
-from pathlib import Path
+from typing import List
 
 import pytest
 
 from app.catalog import TestCatalog
-from app.models.evidence import EvidenceType, RetrievedEvidence
-
-KNOWLEDGE_BASE = Path(__file__).resolve().parents[2] / "knowledge_base"
-DOCUMENT_FILES = {
-    "test_documentation.json": EvidenceType.TEST_DOCUMENTATION,
-    "historical_failures.json": EvidenceType.HISTORICAL_FAILURE,
-    "jurisdiction_rules.json": EvidenceType.JURISDICTION_RULE,
-}
-
-
-def _load(filename: str) -> list:
-    return json.loads((KNOWLEDGE_BASE / filename).read_text(encoding="utf-8"))
+from app.knowledge.documents import KnowledgeDocument, decode_list
+from app.knowledge.loader import load_documents
+from app.models.evidence import EvidenceType
 
 
 @pytest.fixture(scope="module")
@@ -31,12 +21,12 @@ def catalog() -> TestCatalog:
 
 
 @pytest.fixture(scope="module")
-def documents() -> list:
-    return [
-        RetrievedEvidence.model_validate(document)
-        for filename in DOCUMENT_FILES
-        for document in _load(filename)
-    ]
+def documents() -> List[KnowledgeDocument]:
+    return load_documents()
+
+
+def _of_type(documents: List[KnowledgeDocument], evidence_type: EvidenceType) -> list:
+    return [document for document in documents if document.type is evidence_type]
 
 
 def test_catalog_holds_between_ten_and_fifteen_tests(catalog: TestCatalog) -> None:
@@ -49,21 +39,29 @@ def test_catalog_covers_every_module_and_scope(catalog: TestCatalog) -> None:
     assert {test.scope for test in tests} == set(type(tests[0].scope))
 
 
-@pytest.mark.parametrize("filename,expected_type", DOCUMENT_FILES.items())
-def test_documents_validate_as_evidence(filename: str, expected_type) -> None:
-    documents = [RetrievedEvidence.model_validate(row) for row in _load(filename)]
+@pytest.mark.parametrize(
+    "evidence_type",
+    [
+        EvidenceType.TEST_DOCUMENTATION,
+        EvidenceType.HISTORICAL_FAILURE,
+        EvidenceType.JURISDICTION_RULE,
+    ],
+)
+def test_every_evidence_type_is_represented(
+    documents: List[KnowledgeDocument], evidence_type: EvidenceType
+) -> None:
+    assert _of_type(documents, evidence_type)
 
-    assert documents
-    assert all(document.type is expected_type for document in documents)
 
-
-def test_source_ids_are_unique_across_the_knowledge_base(documents: list) -> None:
+def test_source_ids_are_unique_across_the_knowledge_base(
+    documents: List[KnowledgeDocument],
+) -> None:
     source_ids = [document.source_id for document in documents]
     assert len(source_ids) == len(set(source_ids))
 
 
 def test_every_referenced_test_id_exists_in_the_catalog(
-    documents: list, catalog: TestCatalog
+    documents: List[KnowledgeDocument], catalog: TestCatalog
 ) -> None:
     referenced = {
         document.metadata["test_id"]
@@ -75,19 +73,34 @@ def test_every_referenced_test_id_exists_in_the_catalog(
     assert all(catalog.get(test_id) is not None for test_id in referenced)
 
 
-def test_every_catalog_test_has_documentation(catalog: TestCatalog) -> None:
+def test_every_catalog_test_has_documentation(
+    documents: List[KnowledgeDocument], catalog: TestCatalog
+) -> None:
     documented = {
-        document["metadata"]["test_id"] for document in _load("test_documentation.json")
+        document.metadata["test_id"]
+        for document in _of_type(documents, EvidenceType.TEST_DOCUMENTATION)
     }
 
     assert documented == {test.id for test in catalog.all()}
 
 
 def test_historical_failures_use_supported_browsers_and_regions(
-    catalog: TestCatalog,
+    documents: List[KnowledgeDocument], catalog: TestCatalog
 ) -> None:
-    for failure in _load("historical_failures.json"):
-        metadata = failure["metadata"]
-        test_case = catalog.get(metadata["test_id"])
-        assert metadata["browser"] in test_case.browsers
-        assert metadata["region"] in test_case.regions
+    for failure in _of_type(documents, EvidenceType.HISTORICAL_FAILURE):
+        test_case = catalog.get(failure.metadata["test_id"])
+        assert failure.metadata["browser"] in test_case.browsers
+        assert failure.metadata["region"] in test_case.regions
+
+
+def test_jurisdiction_rules_apply_to_known_modules(
+    documents: List[KnowledgeDocument], catalog: TestCatalog
+) -> None:
+    known_modules = {test.module.value for test in catalog.all()}
+    known_regions = {region.value for test in catalog.all() for region in test.regions}
+
+    for rule in _of_type(documents, EvidenceType.JURISDICTION_RULE):
+        assert rule.metadata["region"] in known_regions
+        modules = rule.metadata["applies_to_modules"]
+        assert modules
+        assert set(decode_list(rule.flatten_metadata()["applies_to_modules"])) <= known_modules

@@ -4,12 +4,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project state
 
-Documentation and architecture are complete. **Modules 1 and 3 are done (11 of 59 stories).** Suite is green: 125 tests.
+Documentation and architecture are complete. **Modules 1, 2, and 3 are done (17 of 59 stories).** Suite is green: 163 tests.
 
-- **Module 1 — Foundation:** domain models in `app/models/`, `TestCatalog`, `AppSettings`, the 7-table SQLite schema, five repositories in `app/db/repositories.py`. Seed data is `data/test_cases.json` (12 tests) plus `knowledge_base/`.
-- **Module 3 — Intent:** `app/llm/` (provider interface, `OpenAIProvider`, versioned prompts) and `app/agents/` (`IntentAgent`, normalization).
+- **Module 1 — Foundation:** domain models in `app/models/`, `TestCatalog`, `AppSettings`, the 7-table SQLite schema, five repositories in `app/db/repositories.py`. Seed data is `data/test_cases.json` (12 tests) plus `knowledge_base/` (24 documents).
+- **Module 2 — Retrieval:** `app/knowledge/` (documents, loader, ingest), `app/retrieval/store.py` (`ChromaVectorStore`), `app/agents/retrieval.py`, `scripts/ingest_knowledge_base.py`.
+- **Module 3 — Intent:** `app/llm/` (provider interface, `OpenAIProvider`, embeddings, versioned prompts) and `app/agents/intent.py` plus normalization.
 
-Next is Module 2 (Knowledge Base and Retrieval), which unblocks Module 4 (Planning and Policy). See `docs/module-map.md` for the dependency order.
+Next is Module 4 (Planning and Policy) — now unblocked, and the last piece before the first end-to-end slice. See `docs/module-map.md` for the dependency order.
+
+Note: `README.md` still says implementation has not started. It needs a refresh once more of the stack lands.
 
 The repo uses TDD: tests are often written before the code exists. A failing import in `tests/` is a specification, not breakage. Never delete or skip one to get green.
 
@@ -76,6 +79,9 @@ These are the point of the project — violating them defeats it:
 - `Database.connect()` is a context manager that enables `PRAGMA foreign_keys`, commits on success, rolls back on exception. All persistence goes through it.
 - Agents depend on the `LLMProvider` ABC, never on the `openai` SDK — tests use a fake provider. Provider failures are the typed errors in `app/llm/errors.py`; an agent turns them into an explicit outcome (e.g. `ClarificationRequired`) and never a guessed value.
 - Provider schemas are built from the enums (`build_intent_schema`), so the prompt contract cannot drift from the vocabulary validators accept. Output is validated twice: schema, then `app/agents/normalization.py`, which returns `None` for unknown values rather than snapping to a near match.
+- Retrieval filters deterministically **before** semantic search: the catalog produces the compatible test-ID set, which becomes the Chroma `where` clause. Vector similarity only ranks an already-legal candidate set. A `VectorStoreError` propagates as `RetrievalError` — never an empty result, which would read as "no evidence exists".
+- Embeddings are always supplied by `EmbeddingProvider`; `ChromaVectorStore` is constructed with `embedding_function=None` so it never downloads a model of its own. Tests use `tests/fakes.HashingEmbedder` and run against real Chroma.
+- Chroma metadata must be scalar, so list values are stored delimited (`"|payment|checkout|"`) via `flatten_metadata()`; use `list_contains` to test membership, never a substring check.
 - Repositories return Pydantic models, not `sqlite3.Row`. Payload dicts are JSON columns; timestamps are UTC ISO strings on disk, `datetime` in models.
 - Loaders are classmethod constructors (`TestCatalog.load`, `.load_default`) and validate invariants eagerly (duplicate IDs raise at construction).
 - Keyword-only arguments for multi-parameter filters/writers (`catalog.filter(*, module, scope, browser, region)`).
