@@ -16,6 +16,10 @@ from app.observability.logging import (
     timed_step,
 )
 
+# Deliberately not key-shaped: the repository-wide secret scan in
+# tests/unit/test_secret_hygiene.py must not have to exempt this file.
+FAKE_SECRET = "fake-not-a-real-credential"
+
 
 @pytest.fixture
 def captured():
@@ -81,24 +85,25 @@ def test_sensitive_field_names_are_recognized(key) -> None:
 
 
 def test_a_sensitive_field_is_never_written(captured) -> None:
+    """Redaction keys off the field name, so the value need not look real."""
     log_step(
         component="llm",
         step="extract",
         status="completed",
-        api_key="sk-live-abcdef123456",
+        api_key=FAKE_SECRET,
         model="gpt-test",
     )
 
     record = _records(captured)[0]
     assert record["api_key"] == REDACTED
-    assert "sk-live-abcdef123456" not in captured.getvalue()
+    assert FAKE_SECRET not in captured.getvalue()
     assert record["model"] == "gpt-test"
 
 
 def test_redaction_reaches_nested_values() -> None:
     payload = {
-        "settings": {"openai_api_key": "sk-live-1", "model": "gpt-test"},
-        "items": [{"token": "secret-value"}, {"name": "safe"}],
+        "settings": {"openai_api_key": FAKE_SECRET, "model": "gpt-test"},
+        "items": [{"token": FAKE_SECRET}, {"name": "safe"}],
     }
 
     cleaned = redact(payload)
@@ -114,10 +119,10 @@ def test_nested_secrets_in_a_logged_field_are_redacted(captured) -> None:
         component="config",
         step="load",
         status="completed",
-        settings={"openai_api_key": "sk-live-2", "database_path": "local.db"},
+        settings={"openai_api_key": FAKE_SECRET, "database_path": "local.db"},
     )
 
-    assert "sk-live-2" not in captured.getvalue()
+    assert FAKE_SECRET not in captured.getvalue()
     assert "local.db" in captured.getvalue()
 
 

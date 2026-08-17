@@ -73,8 +73,11 @@ def test_no_secret_shaped_assignment_carries_a_literal_value() -> None:
     for relative, text in _readable_tracked_files():
         for match in ASSIGNMENT.finditer(text):
             value = match.group(2)
-            # Placeholders, env references, and test fixtures are expected.
-            if value.startswith(("$", "${", "<", "your-", "example")):
+            # Placeholders and env references are expected. A test fixture that
+            # must occupy a secret-shaped field declares itself with a `fake-`
+            # prefix, so an exemption is visible at the value rather than hidden
+            # in a file-level allowlist here.
+            if value.startswith(("$", "${", "<", "your-", "example", "fake-")):
                 continue
             if value in {"test-key", "client-key-1", "e2e-key", "key-1"}:
                 continue
