@@ -6,6 +6,7 @@ before anything else can fail.
 """
 
 import hashlib
+import logging
 from typing import List, Optional
 
 from app.db.repositories import ExecutionRepository, WorkflowRepository
@@ -15,9 +16,15 @@ from app.integrations.mock_jenkins import (
     MockJenkinsService,
     build_job_request,
 )
-from app.models.execution import Execution, ExecutionStatus, InvalidJobTransitionError
+from app.models.execution import (
+    Execution,
+    ExecutionStatus,
+    InvalidJobTransitionError,
+    TestOutcome,
+)
 from app.models.plan import ExecutionPlan
 from app.models.workflow import AgentRunStatus
+from app.observability.logging import fingerprint, log_step
 
 AGENT_NAME = "execution"
 
@@ -82,6 +89,15 @@ class ExecutionAgent:
         key = idempotency_key or build_idempotency_key(workflow_id, plan)
         existing = self._executions.find_by_idempotency_key(key)
         if existing is not None:
+            # The key is logged as a fingerprint: correlatable, not disclosed.
+            log_step(
+                component=AGENT_NAME,
+                step="submit",
+                status="replayed",
+                workflow_id=workflow_id,
+                external_job_id=existing.external_job_id,
+                idempotency_fingerprint=fingerprint(key),
+            )
             return self._with_results(existing)
 
         request = build_job_request(
@@ -97,8 +113,16 @@ class ExecutionAgent:
             self._record(
                 workflow_id,
                 status=AgentRunStatus.FAILED,
-                output={"idempotency_key": key},
+                output={"idempotency_fingerprint": fingerprint(key)},
                 error=str(error),
+            )
+            log_step(
+                component=AGENT_NAME,
+                step="submit",
+                status="failed",
+                workflow_id=workflow_id,
+                error_code=type(error).__name__,
+                level=logging.ERROR,
             )
             raise ExecutionError(f"job submission failed: {error}") from error
 
@@ -130,6 +154,19 @@ class ExecutionAgent:
 
         results = self._executions.record_results(execution.id, finished.results)
         updated = self._executions.update_status(execution.id, finished.status)
+
+        log_step(
+            component=AGENT_NAME,
+            step="collect",
+            status=finished.status.value,
+            workflow_id=workflow_id,
+            external_job_id=job_id,
+            idempotency_fingerprint=fingerprint(execution.idempotency_key),
+            result_count=len(results),
+            failed_count=sum(
+                1 for result in results if result.status is TestOutcome.FAILED
+            ),
+        )
 
         self._record(
             workflow_id,

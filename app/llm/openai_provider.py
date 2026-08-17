@@ -13,6 +13,7 @@ from app.llm.errors import (
     ProviderUnavailableError,
 )
 from app.llm.provider import LLMProvider
+from app.observability.logging import timed_step
 
 DEFAULT_TIMEOUT_SECONDS = 30.0
 
@@ -44,6 +45,22 @@ class OpenAIProvider(LLMProvider):
     def extract_structured(
         self,
         *,
+        system_prompt: str,
+        user_prompt: str,
+        schema: Dict[str, Any],
+        schema_name: str,
+    ) -> Dict[str, Any]:
+        # Records the model, schema, and latency. The key is never a field.
+        with timed_step(
+            component="llm",
+            step="extract_structured",
+            model=self._model,
+            schema_name=schema_name,
+        ):
+            return self._call(system_prompt, user_prompt, schema, schema_name)
+
+    def _call(
+        self,
         system_prompt: str,
         user_prompt: str,
         schema: Dict[str, Any],

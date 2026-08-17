@@ -5,6 +5,7 @@ compatible subset. The agent returns evidence and diagnostics — it never
 selects executable tests, decides policy, or claims a root cause.
 """
 
+import logging
 from typing import Any, Dict, List, Optional, Sequence
 
 from app.catalog import TestCatalog
@@ -16,6 +17,7 @@ from app.models.evidence import EvidenceType, RetrievedEvidence
 from app.models.intent import TestIntent
 from app.models.retrieval import RetrievalDiagnostics, RetrievalResult
 from app.models.workflow import AgentRunStatus
+from app.observability.logging import log_step
 from app.retrieval.store import VectorStore, VectorStoreError
 
 AGENT_NAME = "retrieval"
@@ -88,6 +90,15 @@ class RetrievalAgent:
                 output_payload={"error": str(error)},
                 error=str(error),
             )
+            log_step(
+                component=AGENT_NAME,
+                step="retrieve",
+                status="failed",
+                workflow_id=workflow_id,
+                error_code=type(error).__name__,
+                filters=_filters(intent),
+                level=logging.ERROR,
+            )
             raise RetrievalError(f"evidence retrieval failed: {error}") from error
 
         result = _bound(
@@ -105,6 +116,20 @@ class RetrievalAgent:
             status=AgentRunStatus.COMPLETED,
             input_payload=_input_payload(intent, query_text, candidate_test_ids),
             output_payload=result.diagnostics.model_dump(mode="json"),
+        )
+        # Filters, top-K, source IDs, and scores, so a retrieval decision can be
+        # reviewed from logs alone.
+        log_step(
+            component=AGENT_NAME,
+            step="retrieve",
+            status="completed",
+            workflow_id=workflow_id,
+            filters=result.diagnostics.filters,
+            top_k=result.diagnostics.top_k,
+            candidate_test_ids=candidate_test_ids,
+            source_ids=result.diagnostics.returned_source_ids,
+            scores=result.diagnostics.scores,
+            truncated=result.diagnostics.truncated,
         )
         return result
 

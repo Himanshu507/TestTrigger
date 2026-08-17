@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project state
 
-Documentation and architecture are complete. **Modules 1–10 are done (53 of 59 stories).** Suite is green: 361 tests.
+**The 59-story MVP is complete.** All 11 modules are implemented. Suite is green: 402 tests in ~12s.
 
 - **Module 1 — Foundation:** domain models in `app/models/`, `TestCatalog`, `AppSettings`, the 7-table SQLite schema, five repositories in `app/db/repositories.py`. Seed data is `data/test_cases.json` (12 tests) plus `knowledge_base/` (24 documents).
 - **Module 2 — Retrieval:** `app/knowledge/` (documents, loader, ingest), `app/retrieval/store.py` (`ChromaVectorStore`), `app/agents/retrieval.py`, `scripts/ingest_knowledge_base.py`.
@@ -18,6 +18,7 @@ Documentation and architecture are complete. **Modules 1–10 are done (53 of 59
 - **Module 9 — Local Chat UI:** `frontend/` — plain `index.html` + `styles.css` + `app.js`, no build step and no npm. Mounted by FastAPI at `/ui`.
 
 - **Module 10 — Container Runtime:** `Dockerfile`, `frontend/Dockerfile`, `docker-compose.yml`, `docker/backend-entrypoint.sh`, `.env.example`, `.dockerignore`.
+- **Module 11 — Quality and Operations:** `app/observability/logging.py`, `app/evaluation/harness.py`, `evaluation/dataset.json`, `scripts/evaluate.py`, `tests/e2e/`, `tests/evaluation/`, secret-hygiene checks.
 
 The product runs two ways:
 
@@ -26,7 +27,7 @@ docker compose up --build                              # UI :5173, API :8000
 uv run uvicorn app.api.main:build --factory --reload   # UI at /, API at /api/v1
 ```
 
-Only Module 11 (Quality and Operations, 6 stories) remains. See `docs/module-map.md`.
+Remaining optional work: Module 12 (Code Analysis, 4 stories) — documented in `docs/modules/12-optional-code-analysis.md`, deliberately outside the MVP.
 
 Note: `README.md` still says implementation has not started. It needs a refresh once more of the stack lands.
 
@@ -114,6 +115,9 @@ These are the point of the project — violating them defeats it:
 - Frontend tests (`tests/frontend/`) run real Chromium via Playwright with every API response mocked at the network layer, so they need no backend and no OpenAI call. The page is served over HTTP by a fixture — a `file://` origin cannot resolve the relative `/api/v1` fetch.
 - `sqlite:///path` is **relative**; an absolute path needs `sqlite:////path`. Getting this wrong in a container silently writes the database into the container layer instead of the volume, and it is lost on `down`. `test_persistent_paths_resolve_inside_the_mounted_volume` guards it.
 - The frontend container receives exactly one variable, `API_BASE_URL`, written to `config.js` at start. Anything added to that service is served to the browser, so a credential must never go there. Several tests assert this.
+- Log through `log_step` / `timed_step` in `app/observability/logging.py`, never `print` or a bare logger. Redaction happens in the formatter, so a field named like a secret cannot be written even by accident; use `fingerprint()` for values that must correlate without being disclosed. `tests/conftest.py` silences this logger during tests — leaving it at INFO made the suite ~40× slower.
+- Every graph node is wrapped by `_instrument` in `graph.py`, so a new node gets timing and failure logging automatically. Don't add per-node logging by hand.
+- Evaluation thresholds are asserted in `tests/evaluation/`, not just printed by `scripts/evaluate.py`. A regression in normalization, filtering, or grounding fails the build rather than quietly changing a number.
 - Repositories return Pydantic models, not `sqlite3.Row`. Payload dicts are JSON columns; timestamps are UTC ISO strings on disk, `datetime` in models.
 - Loaders are classmethod constructors (`TestCatalog.load`, `.load_default`) and validate invariants eagerly (duplicate IDs raise at construction).
 - Keyword-only arguments for multi-parameter filters/writers (`catalog.filter(*, module, scope, browser, region)`).

@@ -41,6 +41,7 @@ from app.llm.embeddings import NullEmbeddingProvider, OpenAIEmbeddingProvider
 from app.llm.errors import ProviderNotConfiguredError
 from app.llm.openai_provider import OpenAIProvider
 from app.llm.provider import NullProvider
+from app.observability.logging import configure_logging
 from app.orchestration.dependencies import WorkflowDependencies
 from app.services.planning_service import PlanningService
 from app.orchestration.runner import WorkflowRunner
@@ -68,6 +69,7 @@ def create_app(
     tests run the full HTTP surface offline.
     """
     settings = settings or AppSettings.from_environment()
+    configure_logging()
 
     if dependencies is None:
         dependencies, vector_store, jenkins = _build_dependencies(settings)

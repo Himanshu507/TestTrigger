@@ -9,6 +9,7 @@ from functools import partial
 from langgraph.graph import END, START, StateGraph
 
 from app.models.workflow import WorkflowStatus
+from app.observability.logging import timed_step
 from app.orchestration.dependencies import WorkflowDependencies
 from app.orchestration.nodes import (
     analysis_node,
@@ -71,6 +72,24 @@ def route_after_execution(state: TestWorkflowState) -> str:
     return NODE_ANALYSIS
 
 
+def _instrument(name: str, node):
+    """Time every node and log its outcome, including an unexpected failure.
+
+    Wrapping here rather than inside each node keeps the timing rule in one
+    place and guarantees no step can be added without observability.
+    """
+
+    def run(state: TestWorkflowState):
+        with timed_step(
+            component="workflow", step=name, workflow_id=state.get("workflow_id")
+        ) as extra:
+            update = node(state)
+            extra["resulting_status"] = update.get("status")
+            return update
+
+    return run
+
+
 def build_graph(dependencies: WorkflowDependencies):
     """Compile the workflow graph against the supplied collaborators."""
     graph = StateGraph(TestWorkflowState)
@@ -85,7 +104,7 @@ def build_graph(dependencies: WorkflowDependencies):
         (NODE_ANALYSIS, analysis_node),
         (NODE_COMPLETION, completion_node),
     ):
-        graph.add_node(name, partial(node, dependencies=dependencies))
+        graph.add_node(name, _instrument(name, partial(node, dependencies=dependencies)))
 
     graph.add_edge(START, NODE_INTENT)
     graph.add_conditional_edges(
