@@ -37,6 +37,7 @@ SCHEMA_STATEMENTS: Tuple[str, ...] = (
         test_id TEXT NOT NULL,
         priority INTEGER NOT NULL,
         risk_score REAL,
+        risk_factors TEXT NOT NULL DEFAULT '[]',
         reasons TEXT NOT NULL,
         created_at TEXT NOT NULL,
         UNIQUE (workflow_id, test_id)

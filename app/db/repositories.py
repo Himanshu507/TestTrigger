@@ -181,15 +181,17 @@ class PlanRepository:
                 connection.execute(
                     """
                     INSERT INTO test_plans (
-                        workflow_id, test_id, priority, risk_score, reasons, created_at
+                        workflow_id, test_id, priority, risk_score, risk_factors,
+                        reasons, created_at
                     )
-                    VALUES (?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         workflow_id,
                         item.test_id,
                         item.priority,
                         item.risk_score,
+                        json.dumps([factor.model_dump() for factor in item.risk_factors]),
                         json.dumps(item.reasons),
                         _to_iso(created_at),
                     ),
@@ -210,6 +212,7 @@ class PlanRepository:
                 test_id=row["test_id"],
                 priority=row["priority"],
                 risk_score=row["risk_score"],
+                risk_factors=json.loads(row["risk_factors"]),
                 reasons=json.loads(row["reasons"]),
                 created_at=datetime.fromisoformat(row["created_at"]),
             )

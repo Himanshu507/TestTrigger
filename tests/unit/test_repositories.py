@@ -43,7 +43,7 @@ def _plan() -> ExecutionPlan:
             ),
             PlanItem(test_id="PAY-001", priority=1, reasons=["Matches module and scope"]),
         ],
-        policy_result=PolicyResult(passed=True),
+        policy_result=PolicyResult(allowed=True),
     )
 
 

@@ -5,6 +5,8 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
+from app.models.plan import RiskFactor
+
 
 class StoredPlanItem(BaseModel):
     """One persisted plan row, including why the test was selected."""
@@ -14,6 +16,7 @@ class StoredPlanItem(BaseModel):
     test_id: str
     priority: int
     risk_score: Optional[float] = None
+    risk_factors: List[RiskFactor] = Field(default_factory=list)
     reasons: List[str] = Field(min_length=1)
     created_at: datetime
 

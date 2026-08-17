@@ -46,7 +46,8 @@
     "metadata": {
       "region": "US-Nevada",
       "applies_to_modules": ["withdrawal", "payment"],
-      "requirement": "unsupported browser: safari"
+      "requirement": "unsupported browser: safari",
+      "unsupported_browsers": ["safari"]
     }
   }
 ]

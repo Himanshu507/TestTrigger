@@ -58,11 +58,11 @@ def test_plan_item_rejects_a_test_id_outside_the_catalog_format() -> None:
 
 def test_failing_policy_result_must_carry_violations() -> None:
     with pytest.raises(ValidationError, match="explain why"):
-        PolicyResult(passed=False)
+        PolicyResult(allowed=False)
 
     with pytest.raises(ValidationError, match="cannot list violations"):
         PolicyResult(
-            passed=True,
+            allowed=True,
             violations=[PolicyViolation(code="UNSUPPORTED_BROWSER", message="no")],
         )
 
@@ -81,11 +81,11 @@ def _plan(**overrides) -> ExecutionPlan:
 
 def test_plan_is_not_executable_until_policy_passes() -> None:
     assert _plan().is_executable is False
-    assert _plan(policy_result=PolicyResult(passed=True)).is_executable is True
+    assert _plan(policy_result=PolicyResult(allowed=True)).is_executable is True
     assert (
         _plan(
             policy_result=PolicyResult(
-                passed=False,
+                allowed=False,
                 violations=[PolicyViolation(code="NO_TESTS", message="empty")],
             )
         ).is_executable
@@ -95,7 +95,7 @@ def test_plan_is_not_executable_until_policy_passes() -> None:
 
 def test_empty_plan_cannot_pass_policy_validation() -> None:
     with pytest.raises(ValidationError, match="zero-test plan"):
-        _plan(items=[], policy_result=PolicyResult(passed=True))
+        _plan(items=[], policy_result=PolicyResult(allowed=True))
 
 
 def test_plan_cannot_schedule_the_same_test_twice() -> None:
