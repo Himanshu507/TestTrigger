@@ -8,8 +8,6 @@ Run smoke tests for the payment module on Chrome in the US region.
 
 The system extracts structured intent, retrieves evidence, selects only catalogued tests, validates deterministic policy, launches a mock CI job, collects results, and produces an evidence-grounded report.
 
-> **Status:** the 59-story MVP is implemented and tested. It is a local interview project, not a hosted or production service.
-
 ## What it looks like
 
 The chat UI shows every stage: what the request was understood as, which tests were selected and why, what actually happened, and what the AI inferred from it.
